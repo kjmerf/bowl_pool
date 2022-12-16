@@ -61,7 +61,7 @@ def get_winner(winning_picks: Picks, bettors: Bettors) -> str:
             results[bettor] = 0
 
         for winning_pick in winning_picks:
-            results[bettor] += bettors[bettor][winning_pick]
+            results[bettor] += pick_dict[winning_pick]
 
     return max(results, key=results.get)
 
