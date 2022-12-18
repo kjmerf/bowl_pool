@@ -11,10 +11,14 @@ Path = Tuple[str, str, str, str, str, str, str, str, str, str]
 ipython sample_data/data.csv -i
 """
 
+NATTY_BOWL_NAME = "Natty"
+SEMI_BOWL_NAMES = {"Fiesta", "Peach"}
+
 
 class Row(NamedTuple):
     bowl: str
     team: str
+    adjusted_prob: float
     bettor: str
     potential_points: float
     actual_points: float
@@ -27,11 +31,12 @@ def read_row(row: List[Any]) -> Row:
     return Row(
         row[0],
         row[2],
+        float(row[4]),
         row[6],
         float(row[8]),
         float(row[10]),
         True if row[11] == "TRUE" else False,
-        row[12]
+        row[12],
     )
 
 
@@ -49,9 +54,9 @@ def read_file(file_name: str) -> Tuple[Bowls, Bettors]:
 
                 if row.bowl not in bowls:
                     bowls[row.bowl] = {}
-                    bowls[row.bowl]["teams"] = set()
+                    bowls[row.bowl]["teams"] = {}
 
-                bowls[row.bowl]["teams"].add(row.team)
+                bowls[row.bowl]["teams"][row.team] = row.adjusted_prob
                 bowls[row.bowl]["played"] = row.played
                 bowls[row.bowl]["winner"] = row.winner if row.played else ""
 
@@ -72,7 +77,7 @@ def read_file(file_name: str) -> Tuple[Bowls, Bettors]:
 
 def validate_path(path: Path, bowls: Bowls) -> bool:
 
-    non_natty_winners = set()
+    semi_losers = set()
 
     for bowl_team in path:
         bowl, team = bowl_team.split("_")
@@ -81,12 +86,15 @@ def validate_path(path: Path, bowls: Bowls) -> bool:
             if team != bowls[bowl]["winner"]:
                 return False
 
-        if bowl != "Natty":
-            non_natty_winners.add(team)
-        else:
+        if bowl in SEMI_BOWL_NAMES:
+            for t in bowls[bowl]["teams"]:
+                if t != team:
+                    semi_losers.add(t)
+
+        if bowl == NATTY_BOWL_NAME:
             natty_winner = team
 
-    return natty_winner in non_natty_winners
+    return natty_winner not in semi_losers
 
 
 def get_winner(path: Path, bettors: Bettors) -> str:
@@ -106,15 +114,42 @@ def get_winner(path: Path, bettors: Bettors) -> str:
 
 def get_bowl_team_list(bowls: Bowls) -> List[List[str]]:
 
-    out = []
+    bowl_team_list = []
 
     for bowl, bowl_dict in bowls.items():
-        bowl_team = []
+        btl = []
         for team in bowl_dict["teams"]:
-            bowl_team.append(f"{bowl}_{team}")
-        out.append(bowl_team)
+            btl.append(f"{bowl}_{team}")
+        bowl_team_list.append(btl)
 
-    return out
+    return bowl_team_list
+
+
+def get_prob(path: Path, bowls: Bowls) -> Dict[str, Any]:
+
+    prob = 1.0
+    semi_prob = 0.0
+    semi_winners = {}
+
+    for bowl_team in path:
+        bowl, team = bowl_team.split("_")
+        if bowl != NATTY_BOWL_NAME:
+            if not bowls[bowl]["played"]:
+                prob *= bowls[bowl]["teams"][team]
+        else:
+            natty_winner = team
+
+        if bowl in SEMI_BOWL_NAMES:
+            semi_winners[bowl] = team
+
+    if not bowls[NATTY_BOWL_NAME]["played"]:
+        for semi_bowl in SEMI_BOWL_NAMES:
+            semi_winner = semi_winners[semi_bowl]
+            semi_prob += bowls[NATTY_BOWL_NAME]["teams"][semi_winner]
+
+        prob *= (bowls[NATTY_BOWL_NAME]["teams"][natty_winner] / semi_prob)
+
+    return prob
 
 
 def get_paths_to_victory(bowls: Bowls, bettors: Bettors) -> Dict[str, int]:
@@ -124,11 +159,15 @@ def get_paths_to_victory(bowls: Bowls, bettors: Bettors) -> Dict[str, int]:
 
     for path in itertools.product(*bowl_team_list):
         if validate_path(path, bowls):
+            prob = get_prob(path, bowls)
             winner = get_winner(path, bettors)
             if winner not in paths_to_victory:
-                paths_to_victory[winner] = 1
+                paths_to_victory[winner] = {}
+                paths_to_victory[winner]["wins"] = 1
+                paths_to_victory[winner]["prob"] = prob
             else:
-                paths_to_victory[winner] += 1
+                paths_to_victory[winner]["wins"] += 1
+                paths_to_victory[winner]["prob"] += prob
 
     return paths_to_victory
 

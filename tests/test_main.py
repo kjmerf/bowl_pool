@@ -55,8 +55,16 @@ class TestMain(unittest.TestCase):
         )
 
     def test_get_paths_to_victory(self):
+        wins = 0
+        prob = 0
         paths_to_victory = main.get_paths_to_victory(self.bowls, self.bettors)
-        self.assertEqual(256, sum(paths_to_victory.values()))
+
+        for bettor, results in paths_to_victory.items():
+            wins += results["wins"]
+            prob += results["prob"]
+
+        self.assertEqual(256, wins)
+        self.assertAlmostEqual(1.0, prob)
 
 
 if __name__ == "__main__":
