@@ -58,7 +58,10 @@ def read_file(file_name: str) -> Tuple[Bowls, Bettors]:
 
                 bowls[row.bowl]["teams"][row.team] = row.adjusted_prob
                 bowls[row.bowl]["played"] = row.played
-                bowls[row.bowl]["winner"] = row.winner if row.played else ""
+
+                if row.played:
+                    assert row.winner
+                    bowls[row.bowl]["winner"] = row.winner
 
                 if row.bettor not in bettors:
                     bettors[row.bettor] = {}
