@@ -2,6 +2,7 @@ import argparse
 import csv
 import itertools
 from typing import Any, Dict, List, NamedTuple, Set, Tuple
+import pprint
 
 Bowls = Dict[str, Dict[str, Any]]
 Bettors = Dict[str, Dict[str, Dict[str, float]]]
@@ -186,4 +187,5 @@ if __name__ == "__main__":
 
     bowls, bettors = read_file(args.csv_file_name)
     paths_to_victory = get_paths_to_victory(bowls, bettors)
-    print(paths_to_victory)
+    pp = pprint.PrettyPrinter(indent=4)
+    pp.pprint(paths_to_victory)
