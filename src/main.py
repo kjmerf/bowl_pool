@@ -2,7 +2,8 @@ import argparse
 import csv
 import itertools
 from typing import Any, Dict, List, NamedTuple, Set, Tuple
-import pprint
+
+# import pprint
 
 Bowls = Dict[str, Dict[str, Any]]
 Bettors = Dict[str, Dict[str, Dict[str, float]]]
@@ -101,7 +102,7 @@ def validate_path(path: Path, bowls: Bowls) -> bool:
     return natty_winner not in semi_losers
 
 
-def get_winner(path: Path, bettors: Bettors) -> str:
+def get_winner(path: Path, bettors: Bettors) -> Tuple[str, float]:
 
     results = {}
 
@@ -113,7 +114,9 @@ def get_winner(path: Path, bettors: Bettors) -> str:
             bowl, team = bowl_team.split("_")
             results[bettor] += bettor_dict[bowl][team]
 
-    return max(results, key=results.get)
+    winner = max(results, key=results.get)
+
+    return winner, results[winner]
 
 
 def get_bowl_team_list(bowls: Bowls) -> List[List[str]]:
@@ -151,12 +154,18 @@ def get_prob(path: Path, bowls: Bowls) -> Dict[str, Any]:
             semi_winner = semi_winners[semi_bowl]
             semi_prob += bowls[NATTY_BOWL_NAME]["teams"][semi_winner]
 
-        prob *= (bowls[NATTY_BOWL_NAME]["teams"][natty_winner] / semi_prob)
+        prob *= bowls[NATTY_BOWL_NAME]["teams"][natty_winner] / semi_prob
 
     return prob
 
 
-def get_paths_to_victory(bowls: Bowls, bettors: Bettors) -> Dict[str, int]:
+def get_path_as_str(path: Path) -> str:
+
+    p = [bowl_team.replace("_", " -> ") for bowl_team in path]
+    return ", ".join(p)
+
+
+def get_paths_to_victory(bowls: Bowls, bettors: Bettors) -> Dict[str, Dict[str, Any]]:
 
     paths_to_victory = {}
     bowl_team_list = get_bowl_team_list(bowls)
@@ -164,16 +173,48 @@ def get_paths_to_victory(bowls: Bowls, bettors: Bettors) -> Dict[str, int]:
     for path in itertools.product(*bowl_team_list):
         if validate_path(path, bowls):
             prob = get_prob(path, bowls)
-            winner = get_winner(path, bettors)
+            winner, winning_score = get_winner(path, bettors)
             if winner not in paths_to_victory:
-                paths_to_victory[winner] = {}
-                paths_to_victory[winner]["wins"] = 1
-                paths_to_victory[winner]["prob"] = prob
-            else:
-                paths_to_victory[winner]["wins"] += 1
-                paths_to_victory[winner]["prob"] += prob
+                paths_to_victory[winner] = []
+
+            path_dict = {
+                "path": get_path_as_str(path),
+                "prob": prob,
+                "winning_score": winning_score,
+            }
+            paths_to_victory[winner].append(path_dict)
 
     return paths_to_victory
+
+
+def get_output_file_name(csv_file_name: str) -> str:
+
+    file_name_suffix = csv_file_name.split("/")[-1]
+    file_name_suffix.replace(".csv", "_output.csv")
+    return f"/tmp/{file_name_suffix}"
+
+
+def write_to_file(
+    paths_to_victory: Dict[str, Dict[str, Any]], csv_file_name: str
+) -> None:
+
+    file_name = get_output_file_name(csv_file_name)
+
+    with open(file_name, "w") as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(["winner", "winning_score", "prob", "path"])
+        for winner, path_list in paths_to_victory.items():
+            for path_dict in path_list:
+                writer.writerow(
+                    [
+                        winner,
+                        path_dict["winning_score"],
+                        path_dict["prob"],
+                        path_dict["path"],
+                    ]
+                )
+
+    print(f"Wrote output to {file_name}")
 
 
 if __name__ == "__main__":
@@ -187,5 +228,7 @@ if __name__ == "__main__":
 
     bowls, bettors = read_file(args.csv_file_name)
     paths_to_victory = get_paths_to_victory(bowls, bettors)
-    pp = pprint.PrettyPrinter(indent=4)
-    pp.pprint(paths_to_victory)
+    write_to_file(paths_to_victory, args.csv_file_name)
+
+    # pp = pprint.PrettyPrinter(indent=4)
+    # pp.pprint(paths_to_victory)

@@ -49,19 +49,15 @@ class TestMain(unittest.TestCase):
         self.assertFalse(main.validate_path(PATH_INVALID_NATTY, self.bowls))
         self.assertTrue(main.validate_path(PATH_VALID, self.bowls))
 
-    def test_get_winner(self):
-        self.assertEqual(
-            main.get_winner(PATH_VALID, self.bettors), "Bugs Bunny"
-        )
-
     def test_get_paths_to_victory(self):
         wins = 0
         prob = 0
         paths_to_victory = main.get_paths_to_victory(self.bowls, self.bettors)
 
-        for bettor, results in paths_to_victory.items():
-            wins += results["wins"]
-            prob += results["prob"]
+        for winner, path_list in paths_to_victory.items():
+            for path_dict in path_list:
+                wins += 1
+                prob += path_dict["prob"]
 
         self.assertEqual(256, wins)
         self.assertAlmostEqual(1.0, prob)
