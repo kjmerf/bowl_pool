@@ -40,6 +40,7 @@ PATH_VALID = (
     "Natty_Georgia",
 )
 
+
 class TestMain(unittest.TestCase):
     def setUp(self):
         self.bowls, self.bettors = main.read_file("sample_data/data.csv")
@@ -61,6 +62,12 @@ class TestMain(unittest.TestCase):
 
         self.assertEqual(256, wins)
         self.assertAlmostEqual(1.0, prob)
+
+    def test_get_output_file_name(self):
+        self.assertEqual(
+            main.get_output_file_name("/Users/Bugs/Documents/bowl_pool_20221228.csv"),
+            "/tmp/bowl_pool_20221228_output.csv",
+        )
 
 
 if __name__ == "__main__":

@@ -3,15 +3,10 @@ import csv
 import itertools
 from typing import Any, Dict, List, NamedTuple, Set, Tuple
 
-# import pprint
-
 Bowls = Dict[str, Dict[str, Any]]
 Bettors = Dict[str, Dict[str, Dict[str, float]]]
 Path = Tuple[str, str, str, str, str, str, str, str, str, str]
-
-"""
-ipython sample_data/data.csv -i
-"""
+PathsToVictory = Dict[str, Dict[str, Any]]
 
 NATTY_BOWL_NAME = "Natty"
 SEMI_BOWL_NAMES = {"Fiesta", "Peach"}
@@ -159,13 +154,17 @@ def get_prob(path: Path, bowls: Bowls) -> Dict[str, Any]:
     return prob
 
 
-def get_path_as_str(path: Path) -> str:
+def get_path_as_dict(path: Path) -> Dict[str, str]:
 
-    p = [bowl_team.replace("_", " -> ") for bowl_team in path]
-    return ", ".join(p)
+    path_as_dict = {}
+    for bowl_team in path:
+        bowl, team = bowl_team.split("_")
+        d[bowl] = team
+
+    return path_as_dict
 
 
-def get_paths_to_victory(bowls: Bowls, bettors: Bettors) -> Dict[str, Dict[str, Any]]:
+def get_paths_to_victory(bowls: Bowls, bettors: Bettors) -> PathsToVictory:
 
     paths_to_victory = {}
     bowl_team_list = get_bowl_team_list(bowls)
@@ -174,11 +173,12 @@ def get_paths_to_victory(bowls: Bowls, bettors: Bettors) -> Dict[str, Dict[str, 
         if validate_path(path, bowls):
             prob = get_prob(path, bowls)
             winner, winning_score = get_winner(path, bettors)
+
             if winner not in paths_to_victory:
                 paths_to_victory[winner] = []
 
             path_dict = {
-                "path": get_path_as_str(path),
+                "path": get_path_as_dict(path),
                 "prob": prob,
                 "winning_score": winning_score,
             }
@@ -190,29 +190,49 @@ def get_paths_to_victory(bowls: Bowls, bettors: Bettors) -> Dict[str, Dict[str, 
 def get_output_file_name(csv_file_name: str) -> str:
 
     file_name_suffix = csv_file_name.split("/")[-1]
-    file_name_suffix.replace(".csv", "_output.csv")
+    file_name_suffix = file_name_suffix.replace(".csv", "_output.csv")
     return f"/tmp/{file_name_suffix}"
 
 
+def get_row(**kwargs) -> List[Any]:
+
+    if kwargs["is_first_row"]:
+        return ["winner", "winning_score", "prob", *kwargs["bowl_names"]]
+    else:
+        path_dict = kwargs["path_dict"]
+        row = []
+        row.append(kwargs["winner"])
+        row.append(path_dict["winning_score"])
+        row.append(path_dict["prob"])
+
+        for bowl_name in kwargs["bowl_names"]:
+            row.append(path_dict["path"][bowl_name])
+
+        return row
+
+
 def write_to_file(
-    paths_to_victory: Dict[str, Dict[str, Any]], csv_file_name: str
+    bowls: Bowls, paths_to_victory: PathsToVictory, csv_file_name: str
 ) -> None:
 
     file_name = get_output_file_name(csv_file_name)
+    bowl_names = list(bowls.keys())
+    bowl_names.sort()
 
     with open(file_name, "w") as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(["winner", "winning_score", "prob", "path"])
+        first_row = get_row(is_first_row=True, bowl_names=bowl_names)
+        writer.writerow(first_row)
+
         for winner, path_list in paths_to_victory.items():
             for path_dict in path_list:
-                writer.writerow(
-                    [
-                        winner,
-                        path_dict["winning_score"],
-                        path_dict["prob"],
-                        path_dict["path"],
-                    ]
+                row = get_row(
+                    winner=winner,
+                    path_dict=path_dict,
+                    bowl_names=bowl_names,
+                    is_first_row=False,
                 )
+                writer.writerow(row)
 
     print(f"Wrote output to {file_name}")
 
@@ -228,7 +248,4 @@ if __name__ == "__main__":
 
     bowls, bettors = read_file(args.csv_file_name)
     paths_to_victory = get_paths_to_victory(bowls, bettors)
-    write_to_file(paths_to_victory, args.csv_file_name)
-
-    # pp = pprint.PrettyPrinter(indent=4)
-    # pp.pprint(paths_to_victory)
+    write_to_file(bowls, paths_to_victory, args.csv_file_name)
