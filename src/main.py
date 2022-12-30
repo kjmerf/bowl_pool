@@ -159,7 +159,7 @@ def get_path_as_dict(path: Path) -> Dict[str, str]:
     path_as_dict = {}
     for bowl_team in path:
         bowl, team = bowl_team.split("_")
-        d[bowl] = team
+        path_as_dict[bowl] = team
 
     return path_as_dict
 
