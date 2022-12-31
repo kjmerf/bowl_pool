@@ -97,7 +97,7 @@ def validate_path(path: Path, bowls: Bowls) -> bool:
     return natty_winner not in semi_losers
 
 # TODO: deal with case where there is a tie rather than throwing an error
-def get_max_from_dict(d: Dict[str, float], path: Path) -> Tuple[str, float]:
+def get_max_from_dict(d: Dict[str, float]) -> Tuple[str, float]:
 
     max_key = None
     max_value = max(d.values())
@@ -124,7 +124,7 @@ def get_winner(path: Path, bettors: Bettors) -> Tuple[str, float]:
             bowl, team = bowl_team.split("_")
             results[bettor] += bettor_dict[bowl][team]
 
-    return get_max_from_dict(results, path)
+    return get_max_from_dict(results)
 
 
 def get_bowl_team_list(bowls: Bowls) -> List[List[str]]:
