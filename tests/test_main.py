@@ -39,6 +39,8 @@ PATH_VALID = (
     "Sugar_Kansas State",
     "Natty_Georgia",
 )
+RESULTS_DICT = {"Elmer Fudd": 95, "Bugs Bunny": 100, "Daffy Duck": 85}
+RESULTS_DICT_INVALID = {"Elmer Fudd": 95, "Bugs Bunny": 100, "Daffy Duck": 100}
 
 
 class TestMain(unittest.TestCase):
@@ -49,6 +51,11 @@ class TestMain(unittest.TestCase):
         self.assertFalse(main.validate_path(PATH_INVALID_ALAMO, self.bowls))
         self.assertFalse(main.validate_path(PATH_INVALID_NATTY, self.bowls))
         self.assertTrue(main.validate_path(PATH_VALID, self.bowls))
+
+    def test_get_max_from_dict(self):
+        self.assertEqual(main.get_max_from_dict(RESULTS_DICT), ("Bugs Bunny", 100))
+        with self.assertRaises(ValueError):
+            main.get_max_from_dict(RESULTS_DICT_INVALID)
 
     def test_get_paths_to_victory(self):
         wins = 0
@@ -66,7 +73,7 @@ class TestMain(unittest.TestCase):
     def test_get_output_file_name(self):
         self.assertEqual(
             main.get_output_file_name("/Users/Bugs/Documents/bowl_pool_20221228.csv"),
-            "/tmp/bowl_pool_20221228_output.csv",
+            "/tmp/bowl_pool_20221228.csv",
         )
 
 

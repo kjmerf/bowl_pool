@@ -96,6 +96,21 @@ def validate_path(path: Path, bowls: Bowls) -> bool:
 
     return natty_winner not in semi_losers
 
+# TODO: deal with case where there is a tie rather than throwing an error
+def get_max_from_dict(d: Dict[str, float], path: Path) -> Tuple[str, float]:
+
+    max_key = None
+    max_value = max(d.values())
+
+    for key, value in d.items():
+        if value == max_value:
+            if max_key:
+                raise ValueError("Multiple keys have the max value!")
+            else:
+                max_key = key
+
+    return max_key, max_value
+
 
 def get_winner(path: Path, bettors: Bettors) -> Tuple[str, float]:
 
@@ -109,9 +124,7 @@ def get_winner(path: Path, bettors: Bettors) -> Tuple[str, float]:
             bowl, team = bowl_team.split("_")
             results[bettor] += bettor_dict[bowl][team]
 
-    winner = max(results, key=results.get)
-
-    return winner, results[winner]
+    return get_max_from_dict(results, path)
 
 
 def get_bowl_team_list(bowls: Bowls) -> List[List[str]]:
@@ -190,7 +203,6 @@ def get_paths_to_victory(bowls: Bowls, bettors: Bettors) -> PathsToVictory:
 def get_output_file_name(csv_file_name: str) -> str:
 
     file_name_suffix = csv_file_name.split("/")[-1]
-    file_name_suffix = file_name_suffix.replace(".csv", "_output.csv")
     return f"/tmp/{file_name_suffix}"
 
 
