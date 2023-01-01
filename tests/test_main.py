@@ -40,7 +40,7 @@ PATH_VALID = (
     "Natty_Georgia",
 )
 RESULTS_DICT = {"Elmer Fudd": 95, "Bugs Bunny": 100, "Daffy Duck": 85}
-RESULTS_DICT_INVALID = {"Elmer Fudd": 95, "Bugs Bunny": 100, "Daffy Duck": 100}
+RESULTS_DICT_TIE = {"Elmer Fudd": 95, "Daffy Duck": 100, "Bugs Bunny": 100}
 
 
 class TestMain(unittest.TestCase):
@@ -52,10 +52,14 @@ class TestMain(unittest.TestCase):
         self.assertFalse(main.validate_path(PATH_INVALID_NATTY, self.bowls))
         self.assertTrue(main.validate_path(PATH_VALID, self.bowls))
 
-    def test_get_max_from_dict(self):
-        self.assertEqual(main.get_max_from_dict(RESULTS_DICT), ("Bugs Bunny", 100))
-        with self.assertRaises(ValueError):
-            main.get_max_from_dict(RESULTS_DICT_INVALID)
+    def test_get_winner_from_results(self):
+        self.assertEqual(
+            main.get_winner_from_results(RESULTS_DICT), ("Bugs Bunny", 100)
+        )
+        self.assertEqual(
+            main.get_winner_from_results(RESULTS_DICT_TIE),
+            ("Bugs Bunny, Daffy Duck tie", 100),
+        )
 
     def test_get_paths_to_victory(self):
         wins = 0
