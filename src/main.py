@@ -249,7 +249,7 @@ def write_to_file(
                 )
                 writer.writerow(row)
 
-    print(f"Wrote output to {file_name}")
+    print(file_name)
 
 
 if __name__ == "__main__":
