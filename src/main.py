@@ -96,38 +96,42 @@ def validate_path(path: Path, bowls: Bowls) -> bool:
 
     return natty_winner not in semi_losers
 
-def get_winner_from_results(results: Dict[str, float]) -> Tuple[str, float]:
 
-    max_keys = []
-    max_value = max(results.values())
+def check_for_tie(results: Dict[str, Dict[str, Any]], max_score: float) -> bool:
 
-    for key, value in results.items():
-        if value == max_value:
-            max_keys.append(key)
+    winners = []
 
-    max_keys.sort()
+    for bettor, results_dict in results.items():
+        if results_dict["score"] == max_score:
+            winners.append(bettor)
 
-    if len(max_keys) > 1:
-        winner = ", ".join(max_keys) + " tie"
-    else:
-        winner = max_keys[0]
-
-    return winner, max_value
+    return len(winners) > 1
 
 
-def get_winner(path: Path, bettors: Bettors) -> Tuple[str, float]:
+def get_winner(path: Path, bettors: Bettors) -> Tuple[str, float, int]:
 
     results = {}
+    max_score = 0
 
     for bettor, bettor_dict in bettors.items():
         if bettor not in results:
-            results[bettor] = 0
+            results[bettor] = {}
+            results[bettor]["correct_picks"] = 0
+            results[bettor]["score"] = 0
 
         for bowl_team in path:
             bowl, team = bowl_team.split("_")
-            results[bettor] += bettor_dict[bowl][team]
+            score = bettor_dict[bowl][team]
+            results[bettor]["correct_picks"] += 1 if score > 0 else 0
+            results[bettor]["score"] += score
 
-    return get_winner_from_results(results)
+        if results[bettor]["score"] >= max_score:
+            max_score = results[bettor]["score"]
+            winner = bettor
+
+    assert not check_for_tie(results, max_score)
+
+    return winner, max_score, results[winner]["correct_picks"]
 
 
 def get_bowl_team_list(bowls: Bowls) -> List[List[str]]:
@@ -188,7 +192,7 @@ def get_paths_to_victory(bowls: Bowls, bettors: Bettors) -> PathsToVictory:
     for path in itertools.product(*bowl_team_list):
         if validate_path(path, bowls):
             prob = get_prob(path, bowls)
-            winner, winning_score = get_winner(path, bettors)
+            winner, winning_score, correct_picks = get_winner(path, bettors)
 
             if winner not in paths_to_victory:
                 paths_to_victory[winner] = []
@@ -197,6 +201,7 @@ def get_paths_to_victory(bowls: Bowls, bettors: Bettors) -> PathsToVictory:
                 "path": get_path_as_dict(path),
                 "prob": prob,
                 "winning_score": winning_score,
+                "correct_picks": correct_picks,
             }
             paths_to_victory[winner].append(path_dict)
 
@@ -212,12 +217,19 @@ def get_output_file_name(csv_file_name: str) -> str:
 def get_row(**kwargs) -> List[Any]:
 
     if kwargs["is_first_row"]:
-        return ["winner", "winning_score", "prob", *kwargs["bowl_names"]]
+        return [
+            "winner",
+            "winning_score",
+            "correct_picks",
+            "prob",
+            *kwargs["bowl_names"],
+        ]
     else:
         path_dict = kwargs["path_dict"]
         row = []
         row.append(kwargs["winner"])
         row.append(path_dict["winning_score"])
+        row.append(path_dict["correct_picks"])
         row.append(path_dict["prob"])
 
         for bowl_name in kwargs["bowl_names"]:
