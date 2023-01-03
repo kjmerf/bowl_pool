@@ -8,9 +8,6 @@ Bettors = Dict[str, Dict[str, Dict[str, float]]]
 Path = Tuple[str, str, str, str, str, str, str, str, str, str]
 PathsToVictory = Dict[str, Dict[str, Any]]
 
-NATTY_BOWL_NAME = "Natty"
-SEMI_BOWL_NAMES = {"Fiesta", "Peach"}
-
 
 class Row(NamedTuple):
     bowl: str
@@ -20,7 +17,14 @@ class Row(NamedTuple):
     potential_points: float
     actual_points: float
     played: bool
+    is_playoff: bool
+    is_natty: bool
     winner: str
+
+
+def convert_to_bool(s: str) -> bool:
+
+    return True if s == "TRUE" else False
 
 
 def read_row(row: List[Any]) -> Row:
@@ -32,8 +36,10 @@ def read_row(row: List[Any]) -> Row:
         row[6],
         float(row[8]),
         float(row[10]),
-        True if row[11] == "TRUE" else False,
-        row[12],
+        convert_to_bool(row[11]),
+        convert_to_bool(row[12]),
+        convert_to_bool(row[13]),
+        row[14],
     )
 
 
@@ -52,9 +58,11 @@ def read_file(file_name: str) -> Tuple[Bowls, Bettors]:
                 if row.bowl not in bowls:
                     bowls[row.bowl] = {}
                     bowls[row.bowl]["teams"] = {}
+                    bowls[row.bowl]["played"] = row.played
+                    bowls[row.bowl]["is_playoff"] = row.is_playoff
+                    bowls[row.bowl]["is_natty"] = row.is_natty
 
                 bowls[row.bowl]["teams"][row.team] = row.adjusted_prob
-                bowls[row.bowl]["played"] = row.played
 
                 if row.played:
                     assert row.winner
@@ -75,7 +83,10 @@ def read_file(file_name: str) -> Tuple[Bowls, Bettors]:
     return bowls, bettors
 
 
-def validate_path(path: Path, bowls: Bowls) -> bool:
+# TODO: this needs to be made more generic for the 12 team playoff
+def validate_path(
+    path: Path, bowls: Bowls, natty_bowl_name: str, semi_bowl_names: Set[str]
+) -> bool:
 
     semi_losers = set()
 
@@ -86,12 +97,12 @@ def validate_path(path: Path, bowls: Bowls) -> bool:
             if team != bowls[bowl]["winner"]:
                 return False
 
-        if bowl in SEMI_BOWL_NAMES:
+        if bowl in semi_bowl_names:
             for t in bowls[bowl]["teams"]:
                 if t != team:
                     semi_losers.add(t)
 
-        if bowl == NATTY_BOWL_NAME:
+        if bowl == natty_bowl_name:
             natty_winner = team
 
     return natty_winner not in semi_losers
@@ -147,7 +158,10 @@ def get_bowl_team_list(bowls: Bowls) -> List[List[str]]:
     return bowl_team_list
 
 
-def get_prob(path: Path, bowls: Bowls) -> Dict[str, Any]:
+# TODO: this needs to be made more generic for the 12 team playoff
+def get_prob(
+    path: Path, bowls: Bowls, natty_bowl_name: str, semi_bowl_names: Set[str]
+) -> Dict[str, Any]:
 
     prob = 1.0
     semi_prob = 0.0
@@ -155,21 +169,21 @@ def get_prob(path: Path, bowls: Bowls) -> Dict[str, Any]:
 
     for bowl_team in path:
         bowl, team = bowl_team.split("_")
-        if bowl != NATTY_BOWL_NAME:
+        if bowl != natty_bowl_name:
             if not bowls[bowl]["played"]:
                 prob *= bowls[bowl]["teams"][team]
         else:
             natty_winner = team
 
-        if bowl in SEMI_BOWL_NAMES:
+        if bowl in semi_bowl_names:
             semi_winners[bowl] = team
 
-    if not bowls[NATTY_BOWL_NAME]["played"]:
-        for semi_bowl in SEMI_BOWL_NAMES:
+    if not bowls[natty_bowl_name]["played"]:
+        for semi_bowl in semi_bowl_names:
             semi_winner = semi_winners[semi_bowl]
-            semi_prob += bowls[NATTY_BOWL_NAME]["teams"][semi_winner]
+            semi_prob += bowls[natty_bowl_name]["teams"][semi_winner]
 
-        prob *= bowls[NATTY_BOWL_NAME]["teams"][natty_winner] / semi_prob
+        prob *= bowls[natty_bowl_name]["teams"][natty_winner] / semi_prob
 
     return prob
 
@@ -184,14 +198,31 @@ def get_path_as_dict(path: Path) -> Dict[str, str]:
     return path_as_dict
 
 
+def get_playoffs(bowls: Bowls) -> Tuple[str, Set[str]]:
+
+    semi_bowl_names = set()
+
+    for bowl, bowl_dict in bowls.items():
+        if bowl_dict["is_playoff"]:
+            if bowl_dict["is_natty"]:
+                natty_bowl_name = bowl
+            else:
+                semi_bowl_names.add(bowl)
+
+    assert len(semi_bowl_names) == 2
+
+    return natty_bowl_name, semi_bowl_names
+
+
 def get_paths_to_victory(bowls: Bowls, bettors: Bettors) -> PathsToVictory:
 
     paths_to_victory = {}
     bowl_team_list = get_bowl_team_list(bowls)
+    natty_bowl_name, semi_bowl_names = get_playoffs(bowls)
 
     for path in itertools.product(*bowl_team_list):
-        if validate_path(path, bowls):
-            prob = get_prob(path, bowls)
+        if validate_path(path, bowls, natty_bowl_name, semi_bowl_names):
+            prob = get_prob(path, bowls, natty_bowl_name, semi_bowl_names)
             winner, winning_score, correct_picks = get_winner(path, bettors)
 
             if winner not in paths_to_victory:
