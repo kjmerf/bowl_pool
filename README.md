@@ -5,7 +5,7 @@ Given a CSV file with picks by bettors, you can use this repo to generate the pa
 For example, suppose your CSV file were in the ```sample_data``` directory. Then you could run:
 
 ```
-python3 src/main.py sample_data/data.csv
+python3 src/main.py sample_data/start.csv
 ```
 
 To run the unit tests, you can use:
