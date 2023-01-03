@@ -83,7 +83,6 @@ def read_file(file_name: str) -> Tuple[Bowls, Bettors]:
     return bowls, bettors
 
 
-# TODO: this needs to be made more generic for the 12 team playoff
 def validate_path(
     path: Path, bowls: Bowls, natty_bowl_name: str, semi_bowl_names: Set[str]
 ) -> bool:
@@ -158,7 +157,6 @@ def get_bowl_team_list(bowls: Bowls) -> List[List[str]]:
     return bowl_team_list
 
 
-# TODO: this needs to be made more generic for the 12 team playoff
 def get_prob(
     path: Path, bowls: Bowls, natty_bowl_name: str, semi_bowl_names: Set[str]
 ) -> Dict[str, Any]:
