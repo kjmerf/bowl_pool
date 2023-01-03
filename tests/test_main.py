@@ -56,10 +56,6 @@ RESULTS_DICT_TIE = {
 class TestMain(unittest.TestCase):
     def setUp(self):
         self.bowls, self.bettors = main.read_file("sample_data/start.csv")
-        self.bowls_middle, self.bettors_middle = main.read_file(
-            "sample_data/middle.csv"
-        )
-        self.bowls_end, self.bettors_end = main.read_file("sample_data/end.csv")
 
     def test_convert_to_bool(self):
         self.assertFalse(main.convert_to_bool("FALSE"))
