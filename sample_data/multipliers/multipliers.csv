@@ -1,0 +1,23 @@
+Bowl,Team,Key,Money Line,Probability,Adjusted Probability,Multiplier
+Alamo,Washington,AlamoWashington,200,0.33,0.33,3
+Alamo,Texas,AlamoTexas,-200,0.67,0.67,1.5
+Citrus,Purdue,CitrusPurdue,260,0.28,0.27,3.73
+Citrus,LSU,CitrusLSU,-312,0.76,0.73,1.37
+Cotton,Tulane,CottonTulane,114,0.47,0.45,2.21
+Cotton,USC,CottonUSC,-130,0.57,0.55,1.83
+Fiesta,TCU,FiestaTCU,275,0.27,0.26,3.8
+Fiesta,Michigan,FiestaMichigan,-295,0.75,0.74,1.36
+Gator,South Carolina,GatorSouth Carolina,165,0.38,0.38,2.65
+Gator,Notre Dame,GatorNotre Dame,-166,0.62,0.62,1.6
+Natty,TCU,NattyTCU,1800,0.05,0.05,20.62
+Natty,Ohio State,NattyOhio State,360,0.22,0.2,4.99
+Natty,Michigan,NattyMichigan,300,0.25,0.23,4.34
+Natty,Georgia,NattyGeorgia,-130,0.57,0.52,1.92
+Orange,Tennessee,OrangeTennessee,215,0.32,0.31,3.18
+Orange,Clemson,OrangeClemson,-225,0.69,0.69,1.46
+Peach,Ohio State,PeachOhio State,215,0.32,0.31,3.24
+Peach,Georgia,PeachGeorgia,-245,0.71,0.69,1.45
+Rose,Penn State,RosePenn State,128,0.44,0.43,2.31
+Rose,Utah,RoseUtah,-135,0.57,0.57,1.76
+Sugar,Kansas State,SugarKansas State,180,0.36,0.36,2.79
+Sugar,Alabama,SugarAlabama,-178,0.64,0.64,1.56
