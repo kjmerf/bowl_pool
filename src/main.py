@@ -37,6 +37,13 @@ def convert_to_bool(s: str) -> bool:
 
     return s == "TRUE"
 
+def convert_to_int(s: str) -> int:
+
+    try:
+        return int(s)
+    except ValueError:
+        return 0
+
 
 def read_picks_row(row: List[Any]) -> PicksFileRow:
 
@@ -44,7 +51,7 @@ def read_picks_row(row: List[Any]) -> PicksFileRow:
         row[0],
         row[2],
         row[6],
-        int(row[7]),
+        convert_to_int(row[7]),
     )
 
 
