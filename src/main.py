@@ -153,6 +153,8 @@ def get_picks(picks_file_name: str, bowls: Bowls) -> Tuple[Bowls, Picks]:
                             row.points_wagered
                             * bowls[row.bowl]["teams"][row.team]["multiplier"]
                         )
+                    else:
+                        points = 0
                 else:
                     points = (
                         row.points_wagered
