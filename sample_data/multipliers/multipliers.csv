@@ -1,23 +1,31 @@
 Bowl,Team,Key,Money Line,Probability,Adjusted Probability,Multiplier
-Alamo,Washington,AlamoWashington,200,0.33,0.33,3
-Alamo,Texas,AlamoTexas,-200,0.67,0.67,1.5
-Citrus,Purdue,CitrusPurdue,260,0.28,0.27,3.73
-Citrus,LSU,CitrusLSU,-312,0.76,0.73,1.37
-Cotton,Tulane,CottonTulane,114,0.47,0.45,2.21
-Cotton,USC,CottonUSC,-130,0.57,0.55,1.83
-Fiesta,TCU,FiestaTCU,275,0.27,0.26,3.8
-Fiesta,Michigan,FiestaMichigan,-295,0.75,0.74,1.36
-Gator,South Carolina,GatorSouth Carolina,165,0.38,0.38,2.65
-Gator,Notre Dame,GatorNotre Dame,-166,0.62,0.62,1.6
-Natty,TCU,NattyTCU,1800,0.05,0.05,20.62
-Natty,Ohio State,NattyOhio State,360,0.22,0.2,4.99
-Natty,Michigan,NattyMichigan,300,0.25,0.23,4.34
-Natty,Georgia,NattyGeorgia,-130,0.57,0.52,1.92
-Orange,Tennessee,OrangeTennessee,215,0.32,0.31,3.18
-Orange,Clemson,OrangeClemson,-225,0.69,0.69,1.46
-Peach,Ohio State,PeachOhio State,215,0.32,0.31,3.24
-Peach,Georgia,PeachGeorgia,-245,0.71,0.69,1.45
-Rose,Penn State,RosePenn State,128,0.44,0.43,2.31
-Rose,Utah,RoseUtah,-135,0.57,0.57,1.76
-Sugar,Kansas State,SugarKansas State,180,0.36,0.36,2.79
-Sugar,Alabama,SugarAlabama,-178,0.64,0.64,1.56
+Alamo,Oklahoma,AlamoOklahoma,-165,0.62,0.59,1.68
+Alamo,Arizona,AlamoArizona,135,0.43,0.41,2.46
+Citrus,Iowa,CitrusIowa,260,0.28,0.26,3.8
+Citrus,Tennessee,CitrusTennessee,-350,0.78,0.74,1.36
+Cotton,Ohio State,CottonOhio State,120,0.45,0.43,2.3
+Cotton,Missouri,CottonMissouri,-145,0.59,0.57,1.77
+ReliaQuest,Wisconsin,ReliaQuestWisconsin,275,0.27,0.26,3.92
+ReliaQuest,LSU,ReliaQuestLSU,-350,0.78,0.74,1.34
+Sun,Notre Dame,SunNotre Dame,-275,0.73,0.69,1.44
+Sun,Oregon State,SunOregon State,210,0.32,0.31,3.27
+Natty,Alabama,NattyAlabama,205,0.33,0.22,4.55
+Natty,Washington,NattyWashington,700,0.13,0.08,11.94
+Natty,Michigan,NattyMichigan,195,0.34,0.23,4.4
+Natty,Texas,NattyTexas,260,0.28,0.19,5.37
+Natty,Clemson,NattyClemson,1200,0.08,0.05,19.41
+Natty,Kentucky,NattyKentucky,1500,0.06,0.04,23.89
+Natty,NC State,NattyNC State,2000,0.05,0.03,31.35
+Natty,Kansas State,NattyKansas State,1500,0.06,0.04,23.89
+Natty,Wisconsin,NattyWisconsin,4000,0.02,0.02,61.21
+Natty,LSU,NattyLSU,1500,0.06,0.04,23.89
+Natty,Iowa,NattyIowa,4000,0.02,0.02,61.21
+Natty,Tennessee,NattyTennessee,1500,0.06,0.04,23.89
+Orange,Georgia,OrangeGeorgia,-650,0.87,0.82,1.22
+Orange,Florida State,OrangeFlorida State,425,0.19,0.18,5.55
+Peach,Penn State,PeachPenn State,-175,0.64,0.61,1.64
+Peach,Ole Miss,PeachOle Miss,145,0.41,0.39,2.56
+Rose,Alabama,RoseAlabama,100,0.5,0.48,2.09
+Rose,Michigan,RoseMichigan,-120,0.55,0.52,1.92
+Sugar,Washington,SugarWashington,150,0.4,0.38,2.62
+Sugar,Texas,SugarTexas,-185,0.65,0.62,1.62

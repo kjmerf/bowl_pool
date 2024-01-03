@@ -4,42 +4,42 @@ import unittest
 from src import main
 
 NATTY_BOWL_NAME = "Natty"
-SEMI_BOWL_NAMES = {"Fiesta", "Peach"}
+FIRST_ROUND_BOWL_NAMES = {"Citrus", "Sugar", "Rose", "ReliaQuest"}
 PATH_INVALID_ALAMO = (
-    "Alamo_Washington",
-    "Citrus_LSU",
-    "Cotton_Tulane",
-    "Fiesta_TCU",
-    "Gator_Notre Dame",
-    "Orange_Tennessee",
-    "Peach_Ohio State",
-    "Rose_Penn State",
-    "Sugar_Kansas State",
-    "Natty_Georgia",
+    "Alamo_Oklahoma",
+    "Sun_Notre Dame",
+    "Cotton_Missouri",
+    "Orange_Georgia",
+    "Peach_Ole Miss",
+    "Citrus_Tennessee",
+    "Sugar_Washington",
+    "Rose_Michigan",
+    "ReliaQuest_LSU",
+    "Natty_Washington",
 )
 PATH_INVALID_NATTY = (
-    "Alamo_Texas",
-    "Citrus_LSU",
-    "Cotton_Tulane",
-    "Fiesta_TCU",
-    "Gator_Notre Dame",
-    "Orange_Tennessee",
-    "Peach_Ohio State",
-    "Rose_Penn State",
-    "Sugar_Kansas State",
-    "Natty_Georgia",
+    "Alamo_Arizona",
+    "Sun_Notre Dame",
+    "Cotton_Missouri",
+    "Orange_Georgia",
+    "Peach_Ole Miss",
+    "Citrus_Tennessee",
+    "Sugar_Washington",
+    "Rose_Michigan",
+    "ReliaQuest_LSU",
+    "Natty_Texas",
 )
 PATH_VALID = (
-    "Alamo_Texas",
-    "Citrus_LSU",
-    "Cotton_Tulane",
-    "Fiesta_TCU",
-    "Gator_Notre Dame",
-    "Orange_Tennessee",
-    "Peach_Georgia",
-    "Rose_Penn State",
-    "Sugar_Kansas State",
-    "Natty_Georgia",
+    "Alamo_Arizona",
+    "Sun_Notre Dame",
+    "Cotton_Missouri",
+    "Orange_Georgia",
+    "Peach_Ole Miss",
+    "Citrus_Tennessee",
+    "Sugar_Washington",
+    "Rose_Michigan",
+    "ReliaQuest_LSU",
+    "Natty_Washington",
 )
 RESULTS_DICT = {
     "Elmer Fudd": {"score": 95, "correct_picks": 6},
@@ -58,22 +58,28 @@ class TestMain(unittest.TestCase):
         self.assertFalse(main.convert_to_bool("FALSE"))
         self.assertTrue(main.convert_to_bool("TRUE"))
 
+    def test_get_teams_with_bye(self):
+        multipliers = main.get_multipliers("sample_data/multipliers/multipliers.csv")
+        bowls = main.get_bowls("sample_data/bowls/middle.csv", multipliers)
+
+        self.assertEqual(len(main.get_teams_with_bye(bowls)), 4)
+
     def test_validate_path(self):
         multipliers = main.get_multipliers("sample_data/multipliers/multipliers.csv")
-        bowls = main.get_bowls("sample_data/bowls/start.csv", multipliers)
+        bowls = main.get_bowls("sample_data/bowls/middle.csv", multipliers)
 
         self.assertFalse(
             main.validate_path(
-                PATH_INVALID_ALAMO, bowls, NATTY_BOWL_NAME, SEMI_BOWL_NAMES
+                PATH_INVALID_ALAMO, bowls, NATTY_BOWL_NAME, FIRST_ROUND_BOWL_NAMES
             )
         )
         self.assertFalse(
             main.validate_path(
-                PATH_INVALID_NATTY, bowls, NATTY_BOWL_NAME, SEMI_BOWL_NAMES
+                PATH_INVALID_NATTY, bowls, NATTY_BOWL_NAME, FIRST_ROUND_BOWL_NAMES
             )
         )
         self.assertTrue(
-            main.validate_path(PATH_VALID, bowls, NATTY_BOWL_NAME, SEMI_BOWL_NAMES)
+            main.validate_path(PATH_VALID, bowls, NATTY_BOWL_NAME, FIRST_ROUND_BOWL_NAMES)
         )
 
     def test_check_for_tie(self):
@@ -94,7 +100,7 @@ class TestMain(unittest.TestCase):
                 wins += 1
                 prob += path_dict["prob"]
 
-        self.assertEqual(1024, wins)
+        self.assertEqual(4096, wins)
         self.assertAlmostEqual(1.0, prob)
 
     def test_get_paths_to_victory_middle(self):
@@ -124,9 +130,9 @@ class TestMain(unittest.TestCase):
         paths_to_victory = main.get_paths_to_victory(bowls, picks)
 
         self.assertEqual(len(paths_to_victory), 1)
-        self.assertEqual(len(paths_to_victory["Road Runner"]), 1)
-        self.assertEqual(paths_to_victory["Road Runner"][0]["prob"], 1.0)
-        self.assertEqual(paths_to_victory["Road Runner"][0]["correct_picks"], 8)
+        self.assertEqual(len(paths_to_victory["Daffy Duck"]), 1)
+        self.assertEqual(paths_to_victory["Daffy Duck"][0]["prob"], 1.0)
+        self.assertEqual(paths_to_victory["Daffy Duck"][0]["correct_picks"], 8)
 
 
 if __name__ == "__main__":
