@@ -1,57 +1,91 @@
-from datetime import datetime, timezone
 import unittest
 
 from src import main
 
-NATTY_BOWL_NAME = "Natty"
-FIRST_ROUND_BOWL_NAMES = {"Citrus", "Sugar", "Rose", "ReliaQuest"}
-PATH_INVALID_ALAMO = (
-    "Alamo_Oklahoma",
-    "Sun_Notre Dame",
-    "Cotton_Missouri",
-    "Orange_Georgia",
-    "Peach_Ole Miss",
-    "Citrus_Tennessee",
-    "Sugar_Washington",
-    "Rose_Michigan",
-    "ReliaQuest_LSU",
-    "Natty_Washington",
+PATH_INVALID_NON_PLAYOFF_ALAMO = (
+    "Alamo_Colorado",
+    "Austin_Clemson",
+    "Beaver_Penn State",
+    "Citrus_Illinois",
+    "Cotton_Penn State",
+    "Fiesta_Penn State",
+    "Horseshoe_Ohio State",
+    "Natty_Oregon",
+    "Orange_Oregon",
+    "Peach_Clemson",
+    "PopTarts_Iowa State",
+    "ReliaQuest_Alabama",
+    "Rose_Oregon",
+    "SouthBend_Notre Dame",
+    "Sugar_Georgia",
+)
+PATH_INVALID_QUARTER_FIESTA = (
+    "Alamo_BYU",
+    "Austin_Clemson",
+    "Beaver_Penn State",
+    "Citrus_Illinois",
+    "Cotton_Penn State",
+    "Fiesta_SMU",
+    "Horseshoe_Ohio State",
+    "Natty_Oregon",
+    "Orange_Oregon",
+    "Peach_Clemson",
+    "PopTarts_Iowa State",
+    "ReliaQuest_Alabama",
+    "Rose_Oregon",
+    "SouthBend_Notre Dame",
+    "Sugar_Georgia",
+)
+PATH_INVALID_SEMI_COTTON = (
+    "Alamo_BYU",
+    "Austin_Clemson",
+    "Beaver_Penn State",
+    "Citrus_Illinois",
+    "Cotton_Indiana",
+    "Fiesta_Penn State",
+    "Horseshoe_Ohio State",
+    "Natty_Oregon",
+    "Orange_Oregon",
+    "Peach_Clemson",
+    "PopTarts_Iowa State",
+    "ReliaQuest_Alabama",
+    "Rose_Oregon",
+    "SouthBend_Notre Dame",
+    "Sugar_Georgia",
 )
 PATH_INVALID_NATTY = (
-    "Alamo_Arizona",
-    "Sun_Notre Dame",
-    "Cotton_Missouri",
-    "Orange_Georgia",
-    "Peach_Ole Miss",
-    "Citrus_Tennessee",
-    "Sugar_Washington",
-    "Rose_Michigan",
-    "ReliaQuest_LSU",
-    "Natty_Texas",
-)
-PATH_INVALID_NATTY_LOSERS = (
-    "Alamo_Arizona",
-    "Sun_Notre Dame",
-    "Cotton_Missouri",
-    "Orange_Georgia",
-    "Peach_Ole Miss",
-    "Citrus_Tennessee",
-    "Sugar_Washington",
-    "Rose_Michigan",
-    "ReliaQuest_LSU",
-    "Natty_Clemson",
+    "Alamo_BYU",
+    "Austin_Clemson",
+    "Beaver_Penn State",
+    "Citrus_Illinois",
+    "Cotton_Penn State",
+    "Fiesta_Penn State",
+    "Horseshoe_Ohio State",
+    "Natty_Notre Dame",
+    "Orange_Oregon",
+    "Peach_Clemson",
+    "PopTarts_Iowa State",
+    "ReliaQuest_Alabama",
+    "Rose_Oregon",
+    "SouthBend_Notre Dame",
+    "Sugar_Georgia",
 )
 PATH_VALID = (
-    "Alamo_Arizona",
-    "Sun_Notre Dame",
-    "Cotton_Missouri",
-    "Orange_Georgia",
-    "Peach_Ole Miss",
-    "Citrus_Tennessee",
-    "Sugar_Washington",
-    "Rose_Michigan",
-    "ReliaQuest_LSU",
-    "Natty_Washington",
+    "Alamo_BYU",
+    "Austin_Clemson",
+    "Beaver_Penn State",
+    "Citrus_Illinois",
+    "Cotton_Penn State",
+    "Fiesta_Penn State",
+    "Horseshoe_Ohio State",
+    "Natty_Oregon",
+    "Orange_Oregon",
+    "Peach_Clemson",
+    "PopTarts_Iowa State",
+    "ReliaQuest_Alabama",
+    "Rose_Oregon",
+    "SouthBend_Notre Dame",
+    "Sugar_Georgia",
 )
 RESULTS_DICT = {
     "Elmer Fudd": {"score": 95, "correct_picks": 6},
@@ -65,21 +99,31 @@ RESULTS_DICT_TIE = {
 }
 
 
-class TestMain(unittest.TestCase):
+class TestMain(unittest.TestCase):        
+
     def test_convert_to_bool(self):
         self.assertFalse(main.convert_to_bool("FALSE"))
         self.assertTrue(main.convert_to_bool("TRUE"))
 
-    def test_get_teams_with_bye(self):
+    def test_get_play_in_teams(self):
         multipliers = main.get_multipliers("sample_data/multipliers/multipliers.csv")
-        bowls = main.get_bowls("sample_data/bowls/middle.csv", multipliers)
+        bowls = main.get_bowls("sample_data/bowls/start.csv", multipliers)
+        self.assertEqual(len(main.get_play_in_teams(bowls)), 8)
+    
+    def test_get_team_with_bye(self):
+        multipliers = main.get_multipliers("sample_data/multipliers/multipliers.csv")
+        bowls = main.get_bowls("sample_data/bowls/start.csv", multipliers)
+        self.assertEqual(main.get_team_with_bye("Fiesta", bowls), "Boise State")
 
-        self.assertEqual(len(main.get_teams_with_bye(bowls)), 4)
-
-    def test_get_losers(self):
-        self.assertEqual(
-            main.get_losers("Clemson, Kansas State"), {"Clemson", "Kansas State"}
-        )
+    def test_get_my_qf(self):
+        multipliers = main.get_multipliers("sample_data/multipliers/multipliers.csv")
+        bowls = main.get_bowls("sample_data/bowls/start.csv", multipliers)
+        self.assertEqual(main.get_my_qf("Texas", bowls), "Peach")
+    
+    def test_get_my_semi(self):
+        multipliers = main.get_multipliers("sample_data/multipliers/multipliers.csv")
+        bowls = main.get_bowls("sample_data/bowls/start.csv", multipliers)
+        self.assertEqual(main.get_my_semi("Oregon", bowls), "Orange")
 
     def test_validate_path(self):
         multipliers = main.get_multipliers("sample_data/multipliers/multipliers.csv")
@@ -87,34 +131,31 @@ class TestMain(unittest.TestCase):
 
         self.assertFalse(
             main.validate_path(
-                PATH_INVALID_ALAMO,
+                PATH_INVALID_NON_PLAYOFF_ALAMO,
                 bowls,
-                NATTY_BOWL_NAME,
-                FIRST_ROUND_BOWL_NAMES,
-                set(),
+            )
+        )
+        self.assertFalse(
+            main.validate_path(
+                PATH_INVALID_QUARTER_FIESTA,
+                bowls,
+            )
+        )
+        self.assertFalse(
+            main.validate_path(
+                PATH_INVALID_SEMI_COTTON,
+                bowls,
             )
         )
         self.assertFalse(
             main.validate_path(
                 PATH_INVALID_NATTY,
                 bowls,
-                NATTY_BOWL_NAME,
-                FIRST_ROUND_BOWL_NAMES,
-                set(),
-            )
-        )
-        self.assertFalse(
-            main.validate_path(
-                PATH_INVALID_NATTY_LOSERS,
-                bowls,
-                NATTY_BOWL_NAME,
-                FIRST_ROUND_BOWL_NAMES,
-                {"Clemson"},
             )
         )
         self.assertTrue(
             main.validate_path(
-                PATH_VALID, bowls, NATTY_BOWL_NAME, FIRST_ROUND_BOWL_NAMES, set()
+                PATH_VALID, bowls
             )
         )
 
@@ -129,14 +170,15 @@ class TestMain(unittest.TestCase):
 
         wins = 0
         prob = 0
-        paths_to_victory = main.get_paths_to_victory(bowls, picks, set())
+        paths_to_victory = main.get_paths_to_victory(bowls, picks)
 
-        for winner, path_list in paths_to_victory.items():
+        for _, path_list in paths_to_victory.items():
             for path_dict in path_list:
                 wins += 1
+                # pyright: ignore [reportArgumentType, reportOperatorIssue]
                 prob += path_dict["prob"]
 
-        self.assertEqual(4096, wins)
+        self.assertEqual(32768, wins)
         self.assertAlmostEqual(1.0, prob)
 
     def test_get_paths_to_victory_middle(self):
@@ -146,33 +188,15 @@ class TestMain(unittest.TestCase):
 
         wins = 0
         prob = 0
-        paths_to_victory = main.get_paths_to_victory(bowls, picks, set())
+        paths_to_victory = main.get_paths_to_victory(bowls, picks)
 
         for winner, path_list in paths_to_victory.items():
             for path_dict in path_list:
                 wins += 1
+                # pyright: ignore [reportArgumentType, reportOperatorIssue]
                 prob += path_dict["prob"]
 
-        self.assertEqual(8, wins)
-        self.assertAlmostEqual(1.0, prob)
-
-    def test_get_paths_to_victory_middle_with_losers(self):
-        multipliers = main.get_multipliers("sample_data/multipliers/multipliers.csv")
-        bowls = main.get_bowls("sample_data/bowls/middle.csv", multipliers)
-        picks = main.get_picks("sample_data/picks/picks.csv", bowls)
-
-        wins = 0
-        prob = 0
-        paths_to_victory = main.get_paths_to_victory(
-            bowls, picks, {"Clemson", "Michigan"}
-        )
-
-        for winner, path_list in paths_to_victory.items():
-            for path_dict in path_list:
-                wins += 1
-                prob += path_dict["prob"]
-
-        self.assertEqual(6, wins)
+        self.assertEqual(64, wins)
         self.assertAlmostEqual(1.0, prob)
 
     def test_get_paths_to_victory_end(self):
@@ -180,14 +204,14 @@ class TestMain(unittest.TestCase):
         bowls = main.get_bowls("sample_data/bowls/end.csv", multipliers)
         picks = main.get_picks("sample_data/picks/picks.csv", bowls)
 
-        wins = 0
-        prob = 0
-        paths_to_victory = main.get_paths_to_victory(bowls, picks, set())
+        paths_to_victory = main.get_paths_to_victory(bowls, picks)
 
         self.assertEqual(len(paths_to_victory), 1)
-        self.assertEqual(len(paths_to_victory["Daffy Duck"]), 1)
-        self.assertEqual(paths_to_victory["Daffy Duck"][0]["prob"], 1.0)
-        self.assertEqual(paths_to_victory["Daffy Duck"][0]["correct_picks"], 8)
+        self.assertEqual(len(paths_to_victory["Elmer Fudd"]), 1)
+        # pyright: ignore [reportArgumentType]
+        self.assertEqual(paths_to_victory["Elmer Fudd"][0]["prob"], 1.0)
+        # pyright: ignore [reportArgumentType]
+        self.assertEqual(paths_to_victory["Elmer Fudd"][0]["correct_picks"], 10)
 
 
 if __name__ == "__main__":

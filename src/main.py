@@ -7,8 +7,17 @@ from typing import Any, Dict, List, NamedTuple, Set, Tuple
 Bowls = Dict[str, Dict[str, Any]]
 Multipliers = Dict[str, Dict[str, float]]
 Picks = Dict[str, Dict[str, Dict[str, float]]]
-Path = Tuple[str, str, str, str, str, str, str, str, str, str]
+# the length of this tuple should be equal to the number of bowl games
+Path = Tuple[str, ...]
 PathsToVictory = Dict[str, Dict[str, Any]]
+
+SPREADSHEET_DIVIDERS = [
+    "Non-playoff games",
+    "Play-in games",
+    "Quarterfinals",
+    "Semis",
+    "National Championship",
+]
 
 
 class PicksFileRow(NamedTuple):
@@ -22,7 +31,9 @@ class BowlsFileRow(NamedTuple):
     bowl: str
     winner: str
     played: bool
-    first_round: bool
+    play_in: bool
+    quarter: bool
+    semi: bool
     natty: bool
 
 
@@ -64,6 +75,8 @@ def read_bowls_row(row: List[Any]) -> BowlsFileRow:
         convert_to_bool(row[3]),
         convert_to_bool(row[4]),
         convert_to_bool(row[5]),
+        convert_to_bool(row[6]),
+        convert_to_bool(row[7]),
     )
 
 
@@ -100,7 +113,7 @@ def get_multipliers(multipliers_file_name: str) -> Multipliers:
     return multipliers
 
 
-def get_bowls(bowls_file_name: str, multipliers: Dict[str, str]) -> Bowls:
+def get_bowls(bowls_file_name: str, multipliers: Multipliers) -> Bowls:
 
     bowls = {}
     first_row = True
@@ -116,12 +129,21 @@ def get_bowls(bowls_file_name: str, multipliers: Dict[str, str]) -> Bowls:
                     assert row.winner
                     bowls[row.bowl]["winner"] = row.winner
 
-                if row.natty:
-                    assert len(multipliers[row.bowl]) == 12
-                else:
+                if row.play_in:
                     assert len(multipliers[row.bowl]) == 2
 
-                bowls[row.bowl]["first_round"] = row.first_round
+                if row.quarter:
+                    assert len(multipliers[row.bowl]) == 3
+
+                if row.semi:
+                    assert len(multipliers[row.bowl]) == 6
+
+                if row.natty:
+                    assert len(multipliers[row.bowl]) == 12
+
+                bowls[row.bowl]["play_in"] = row.play_in
+                bowls[row.bowl]["quarter"] = row.quarter
+                bowls[row.bowl]["semi"] = row.semi
                 bowls[row.bowl]["natty"] = row.natty
                 bowls[row.bowl]["played"] = row.played
                 bowls[row.bowl]["teams"] = multipliers[row.bowl]
@@ -131,21 +153,7 @@ def get_bowls(bowls_file_name: str, multipliers: Dict[str, str]) -> Bowls:
     return bowls
 
 
-def get_teams_with_bye(bowls: Bowls) -> Set[str]:
-
-    natty_teams = set()
-    non_natty_teams = set()
-
-    for bowl, bowl_dict in bowls.items():
-        if bowl_dict["natty"]:
-            natty_teams.update(bowl_dict["teams"].keys())
-        else:
-            non_natty_teams.update(bowl_dict["teams"].keys())
-
-    return natty_teams - non_natty_teams
-
-
-def get_picks(picks_file_name: str, bowls: Bowls) -> Tuple[Bowls, Picks]:
+def get_picks(picks_file_name: str, bowls: Bowls) -> Picks:
 
     picks = {}
     first_row = True
@@ -153,7 +161,7 @@ def get_picks(picks_file_name: str, bowls: Bowls) -> Tuple[Bowls, Picks]:
     with open(picks_file_name) as csvfile:
         reader = csv.reader(csvfile)
         for r in reader:
-            if not first_row and r[0]:
+            if not first_row and r[0] and r[0] not in SPREADSHEET_DIVIDERS:
                 row = read_picks_row(r)
 
                 if row.bettor not in picks:
@@ -183,26 +191,12 @@ def get_picks(picks_file_name: str, bowls: Bowls) -> Tuple[Bowls, Picks]:
     return picks
 
 
-def get_losers(losers_str: str) -> Set[str]:
-
-    losers = set()
-
-    if losers_str is not None:
-        for l in losers_str.split(", "):
-            losers.add(l)
-
-    return losers
-
-
 def validate_path(
     path: Path,
     bowls: Bowls,
-    natty_bowl_name: str,
-    first_round_bowl_names: Set[str],
-    losers: Set[str],
 ) -> bool:
 
-    losers_copy = losers.copy()
+    losers = set()
 
     for bowl_team in path:
         bowl, team = bowl_team.split("_")
@@ -211,15 +205,41 @@ def validate_path(
             if team != bowls[bowl]["winner"]:
                 return False
 
-        if bowl in first_round_bowl_names:
+        if bowls[bowl]["play_in"]:
             for t in bowls[bowl]["teams"]:
                 if t != team:
-                    losers_copy.add(t)
+                    losers.add(t)
 
-        if bowl == natty_bowl_name:
-            natty_winner = team
+    for bowl_team in path:
+        bowl, team = bowl_team.split("_")
 
-    return natty_winner not in losers_copy
+        if bowls[bowl]["quarter"]:
+            if team in losers:
+                return False
+
+            for t in bowls[bowl]["teams"]:
+                if t != team:
+                    losers.add(t)
+
+    for bowl_team in path:
+        bowl, team = bowl_team.split("_")
+
+        if bowls[bowl]["semi"]:
+            if team in losers:
+                return False
+
+            for t in bowls[bowl]["teams"]:
+                if t != team:
+                    losers.add(t)
+
+    for bowl_team in path:
+        bowl, team = bowl_team.split("_")
+
+        if bowls[bowl]["natty"]:
+            if team in losers:
+                return False
+
+    return True
 
 
 def check_for_tie(results: Dict[str, Dict[str, Any]], max_score: float) -> bool:
@@ -256,6 +276,7 @@ def get_winner(path: Path, picks: Picks) -> Tuple[str, float, int]:
 
     assert not check_for_tie(results, max_score)
 
+    # pyright: ignore [reportPossiblyUnboundVariable]
     return winner, max_score, results[winner]["correct_picks"]
 
 
@@ -272,49 +293,142 @@ def get_bowl_team_list(bowls: Bowls) -> List[List[str]]:
     return bowl_team_list
 
 
+def get_play_in_teams(bowls: Bowls) -> Set[str]:
+
+    play_in_teams = set()
+
+    for bowl in bowls:
+        if bowls[bowl]["play_in"]:
+            for team in bowls[bowl]["teams"]:
+                play_in_teams.add(team)
+
+    return play_in_teams
+
+
+# pyright: ignore [reportReturnType]
+def get_team_with_bye(bowl: str, bowls: Bowls) -> str:
+
+    play_in_teams = get_play_in_teams(bowls)
+
+    if not bowls[bowl]["quarter"]:
+        raise ValueError(f"The {bowl} Bowl is not a quarterfinal")
+
+    for team in bowls[bowl]["teams"]:
+        if team not in play_in_teams:
+            return team
+
+    raise ValueError(
+        f"Every team playing in the {bowl} Bowl also has a play-in game"
+    )
+
+
+def get_my_qf(team: str, bowls: Bowls) -> str:
+
+    for bowl in bowls:
+        if bowls[bowl]["quarter"]:
+            if team in bowls[bowl]["teams"]:
+                return bowl
+
+    raise ValueError(f"Could not find quarterfinal for {team}")
+
+
+def get_my_semi(team: str, bowls: Bowls) -> str:
+
+    for bowl in bowls:
+        if bowls[bowl]["semi"]:
+            if team in bowls[bowl]["teams"]:
+                return bowl
+
+    raise ValueError(f"Could not find semi for {team}")
+
+
 def get_prob(
     path: Path,
     bowls: Bowls,
-    natty_bowl_name: str,
-    first_round_bowl_names: Set[str],
-    teams_with_bye: Set[str],
-    losers: Set[str],
-) -> Dict[str, Any]:
+) -> float:
 
-    first_round_winners = {}
-    natty_total_prob = 0.0
+    qf_teams = {}
+    semi_teams = {}
+    natty_teams = []
     prob = 1.0
+
+    for bowl in bowls:
+        if bowls[bowl]["quarter"]:
+            qf_teams[bowl] = [get_team_with_bye(bowl, bowls)]
 
     for bowl_team in path:
         bowl, team = bowl_team.split("_")
-        if bowl != natty_bowl_name:
+
+        # non-playoff games
+        if (
+            not bowls[bowl]["play_in"]
+            and not bowls[bowl]["quarter"]
+            and not bowls[bowl]["semi"]
+            and not bowls[bowl]["natty"]
+        ):
+
             if not bowls[bowl]["played"]:
                 prob *= bowls[bowl]["teams"][team]["adjusted_prob"]
-        else:
-            natty_winner = team
 
-        if bowl in first_round_bowl_names:
-            first_round_winners[bowl] = team
+        # play-in games
+        if bowls[bowl]["play_in"]:
 
-    if not bowls[natty_bowl_name]["played"]:
+            if not bowls[bowl]["played"]:
+                prob *= bowls[bowl]["teams"][team]["adjusted_prob"]
 
-        for first_round_bowl in first_round_bowl_names:
-            first_round_winner = first_round_winners[first_round_bowl]
-            if first_round_winner not in losers:
-                natty_total_prob += bowls[natty_bowl_name]["teams"][first_round_winner][
-                    "adjusted_prob"
-                ]
+            qf_bowl = get_my_qf(team, bowls)
+            qf_teams[qf_bowl].append(team)
 
-        for team_with_bye in teams_with_bye:
-            if team_with_bye not in losers:
-                natty_total_prob += bowls[natty_bowl_name]["teams"][team_with_bye][
-                    "adjusted_prob"
-                ]
+    # quarterfinals
+    for bowl_team in path:
+        bowl, team = bowl_team.split("_")
 
-        prob *= (
-            bowls[natty_bowl_name]["teams"][natty_winner]["adjusted_prob"]
-            / natty_total_prob
-        )
+        if bowls[bowl]["quarter"]:
+
+            if not bowls[bowl]["played"]:
+
+                total_prob_qf = 0.0
+                for qf_team in qf_teams[bowl]:
+                    total_prob_qf += bowls[bowl]["teams"][qf_team]["adjusted_prob"]
+
+                prob *= bowls[bowl]["teams"][team]["adjusted_prob"] / total_prob_qf
+
+            semi_bowl = get_my_semi(team, bowls)
+
+            if semi_bowl not in semi_teams:
+                semi_teams[semi_bowl] = [team]
+            else:
+                semi_teams[semi_bowl].append(team)
+
+    # semis
+    for bowl_team in path:
+        bowl, team = bowl_team.split("_")
+
+        if bowls[bowl]["semi"]:
+
+            if not bowls[bowl]["played"]:
+                total_prob_semi = 0.0
+                for semi_team in semi_teams[bowl]:
+                    total_prob_semi += bowls[bowl]["teams"][semi_team]["adjusted_prob"]
+
+                prob *= bowls[bowl]["teams"][team]["adjusted_prob"] / total_prob_semi
+
+            natty_teams.append(team)
+
+    # natty
+    for bowl_team in path:
+        bowl, team = bowl_team.split("_")
+
+        if bowls[bowl]["natty"]:
+
+            if not bowls[bowl]["played"]:
+                total_prob_natty = 0.0
+                for natty_team in natty_teams:
+                    total_prob_natty += bowls[bowl]["teams"][natty_team][
+                        "adjusted_prob"
+                    ]
+
+                prob *= bowls[bowl]["teams"][team]["adjusted_prob"] / total_prob_natty
 
     return prob
 
@@ -329,39 +443,16 @@ def get_path_as_dict(path: Path) -> Dict[str, str]:
     return path_as_dict
 
 
-def get_playoffs(bowls: Bowls) -> Tuple[str, Set[str]]:
-
-    first_round_bowl_names = set()
-
-    for bowl, bowl_dict in bowls.items():
-        if bowl_dict["first_round"]:
-            first_round_bowl_names.add(bowl)
-        elif bowl_dict["natty"]:
-            natty_bowl_name = bowl
-
-    assert len(first_round_bowl_names) == 4
-
-    return natty_bowl_name, first_round_bowl_names
-
-
-def get_paths_to_victory(
-    bowls: Bowls, picks: Picks, losers: Set[str]
-) -> PathsToVictory:
+def get_paths_to_victory(bowls: Bowls, picks: Picks) -> PathsToVictory:
 
     paths_to_victory = {}
     bowl_team_list = get_bowl_team_list(bowls)
-    natty_bowl_name, first_round_bowl_names = get_playoffs(bowls)
-    teams_with_bye = get_teams_with_bye(bowls)
 
     for path in itertools.product(*bowl_team_list):
-        if validate_path(path, bowls, natty_bowl_name, first_round_bowl_names, losers):
+        if validate_path(path, bowls):
             prob = get_prob(
                 path,
                 bowls,
-                natty_bowl_name,
-                first_round_bowl_names,
-                teams_with_bye,
-                losers,
             )
             winner, winning_score, correct_picks = get_winner(path, picks)
 
@@ -463,8 +554,7 @@ if __name__ == "__main__":
     multipliers = get_multipliers(args.multipliers_file_name)
     bowls = get_bowls(args.bowls_file_name, multipliers)
     picks = get_picks(args.picks_file_name, bowls)
-    losers = get_losers(args.losers)
-    paths_to_victory = get_paths_to_victory(bowls, picks, losers)
+    paths_to_victory = get_paths_to_victory(bowls, picks)
 
     if args.output_file_name:
         output_file_name = args.output_file_name
