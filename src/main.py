@@ -6,10 +6,11 @@ from typing import Any, Dict, List, NamedTuple, Set, Tuple
 
 Bowls = Dict[str, Dict[str, Any]]
 Multipliers = Dict[str, Dict[str, float]]
+Outcome = Dict[str, Dict[str, Any]]
 Picks = Dict[str, Dict[str, Dict[str, float]]]
 # the length of this tuple should be equal to the number of bowl games
 Path = Tuple[str, ...]
-PathsToVictory = Dict[str, Dict[str, Any]]
+
 
 SPREADSHEET_DIVIDERS = [
     "Non-playoff games",
@@ -42,6 +43,12 @@ class MultipliersFileRow(NamedTuple):
     team: str
     adjusted_prob: float
     multiplier: float
+
+
+# class for bettors who are in the money
+class Money(NamedTuple):
+    bettor: str
+    score: float
 
 
 def convert_to_bool(s: str) -> bool:
@@ -242,42 +249,45 @@ def validate_path(
     return True
 
 
-def check_for_tie(results: Dict[str, Dict[str, Any]], max_score: float) -> bool:
-
-    winners = []
-
-    for bettor, results_dict in results.items():
-        if results_dict["score"] == max_score:
-            winners.append(bettor)
-
-    return len(winners) > 1
-
-
-def get_winner(path: Path, picks: Picks) -> Tuple[str, float, int]:
+def get_winner_and_loser(path: Path, picks: Picks) -> Tuple[Money, Money]:
 
     results = {}
     max_score = 0
+    min_score = 10000
+    winners = []
+    losers = []
 
     for bettor, pick_dict in picks.items():
         if bettor not in results:
             results[bettor] = {}
-            results[bettor]["correct_picks"] = 0
             results[bettor]["score"] = 0
 
         for bowl_team in path:
             bowl, team = bowl_team.split("_")
             score = pick_dict[bowl][team]
-            results[bettor]["correct_picks"] += 1 if score > 0 else 0
             results[bettor]["score"] += score
 
         if results[bettor]["score"] >= max_score:
             max_score = results[bettor]["score"]
-            winner = bettor
 
-    assert not check_for_tie(results, max_score)
+        if results[bettor]["score"] <= min_score:
+            min_score = results[bettor]["score"]
 
-    # pyright: ignore [reportPossiblyUnboundVariable]
-    return winner, max_score, results[winner]["correct_picks"]
+    for bettor, stats in results.items():
+
+        if stats["score"] == max_score:
+            winners.append(bettor)
+
+        if stats["score"] == min_score:
+            losers.append(bettor)
+
+        if len(winners) > 1:
+            winners.sort()
+
+        if len(losers) > 1:
+            losers.sort()
+
+    return Money(", ".join(winners), max_score), Money(", ".join(losers), min_score)
 
 
 def get_bowl_team_list(bowls: Bowls) -> List[List[str]]:
@@ -317,9 +327,7 @@ def get_team_with_bye(bowl: str, bowls: Bowls) -> str:
         if team not in play_in_teams:
             return team
 
-    raise ValueError(
-        f"Every team playing in the {bowl} Bowl also has a play-in game"
-    )
+    raise ValueError(f"Every team playing in the {bowl} Bowl also has a play-in game")
 
 
 def get_my_qf(team: str, bowls: Bowls) -> str:
@@ -443,9 +451,19 @@ def get_path_as_dict(path: Path) -> Dict[str, str]:
     return path_as_dict
 
 
-def get_paths_to_victory(bowls: Bowls, picks: Picks) -> PathsToVictory:
+def get_outcome_dict(path: Path, prob: float, money: Money) -> Dict[str, Any]:
+
+    return {
+        "path": get_path_as_dict(path),
+        "prob": prob,
+        "winning_score": money.score,
+    }
+
+
+def get_outcomes(bowls: Bowls, picks: Picks) -> Tuple[Outcome, Outcome]:
 
     paths_to_victory = {}
+    paths_to_defeat = {}
     bowl_team_list = get_bowl_team_list(bowls)
 
     for path in itertools.product(*bowl_team_list):
@@ -454,44 +472,47 @@ def get_paths_to_victory(bowls: Bowls, picks: Picks) -> PathsToVictory:
                 path,
                 bowls,
             )
-            winner, winning_score, correct_picks = get_winner(path, picks)
+            winner, loser = get_winner_and_loser(path, picks)
 
-            if winner not in paths_to_victory:
-                paths_to_victory[winner] = []
+            if winner.bettor not in paths_to_victory:
+                paths_to_victory[winner.bettor] = []
 
-            path_dict = {
-                "path": get_path_as_dict(path),
-                "prob": prob,
-                "winning_score": winning_score,
-                "correct_picks": correct_picks,
-            }
-            paths_to_victory[winner].append(path_dict)
+            outcome_dict_winner = get_outcome_dict(path, prob, winner)
+            paths_to_victory[winner.bettor].append(outcome_dict_winner)
 
-    return paths_to_victory
+            if loser.bettor not in paths_to_defeat:
+                paths_to_defeat[loser.bettor] = []
+
+            outcome_dict_loser = get_outcome_dict(path, prob, loser)
+            paths_to_defeat[loser.bettor].append(outcome_dict_loser)
+
+    return paths_to_victory, paths_to_defeat
 
 
-def get_output_file_name() -> str:
+def get_output_file_name(epoch_time: int, winners: bool) -> str:
 
-    epoch_time = int(time.time())
-    return f"/tmp/bowl_pool_{epoch_time}.csv"
+    if winners:
+        suffix = "winners"
+    else:
+        suffix = "losers"
+
+    return f"/tmp/bowl_pool_{epoch_time}_{suffix}.csv"
 
 
 def get_row(**kwargs) -> List[Any]:
 
     if kwargs["is_first_row"]:
         return [
-            "winner",
+            "bettor",
             "winning_score",
-            "correct_picks",
             "prob",
             *kwargs["bowl_names"],
         ]
     else:
         path_dict = kwargs["path_dict"]
         row = []
-        row.append(kwargs["winner"])
+        row.append(kwargs["bettor"])
         row.append(path_dict["winning_score"])
-        row.append(path_dict["correct_picks"])
         row.append(path_dict["prob"])
 
         for bowl_name in kwargs["bowl_names"]:
@@ -500,9 +521,7 @@ def get_row(**kwargs) -> List[Any]:
         return row
 
 
-def write_to_file(
-    bowls: Bowls, paths_to_victory: PathsToVictory, output_file_name: str
-) -> None:
+def write_to_file(bowls: Bowls, outcome: Outcome, output_file_name: str) -> None:
 
     bowl_names = list(bowls.keys())
     bowl_names.sort()
@@ -512,10 +531,10 @@ def write_to_file(
         first_row = get_row(is_first_row=True, bowl_names=bowl_names)
         writer.writerow(first_row)
 
-        for winner, path_list in paths_to_victory.items():
+        for bettor, path_list in outcome.items():
             for path_dict in path_list:
                 row = get_row(
-                    winner=winner,
+                    bettor=bettor,
                     path_dict=path_dict,
                     bowl_names=bowl_names,
                     is_first_row=False,
@@ -541,24 +560,31 @@ if __name__ == "__main__":
         help="The name of the CSV file containing information about the bowls",
     )
     parser.add_argument(
-        "--output_file_name",
-        help="The name of the CSV file to be written",
+        "--output_file_name_winners",
+        help="The name of the CSV file that contains the winners",
     )
     parser.add_argument(
-        "--losers",
-        "-l",
-        help="Comma delimited list of teams that lost during playoff games not captured by the bowl file",
+        "--output_file_name_losers",
+        help="The name of the CSV file that contains the losers",
     )
     args = parser.parse_args()
 
     multipliers = get_multipliers(args.multipliers_file_name)
     bowls = get_bowls(args.bowls_file_name, multipliers)
     picks = get_picks(args.picks_file_name, bowls)
-    paths_to_victory = get_paths_to_victory(bowls, picks)
+    paths_to_victory, paths_to_defeat = get_outcomes(bowls, picks)
 
-    if args.output_file_name:
-        output_file_name = args.output_file_name
+    epoch_time = int(time.time())
+
+    if args.output_file_name_winners:
+        output_file_name_winners = args.output_file_name_winners
     else:
-        output_file_name = get_output_file_name()
+        output_file_name_winners = get_output_file_name(epoch_time, True)
 
-    write_to_file(bowls, paths_to_victory, output_file_name)
+    if args.output_file_name_losers:
+        output_file_name_losers = args.output_file_name_winners
+    else:
+        output_file_name_losers = get_output_file_name(epoch_time, False)
+
+    write_to_file(bowls, paths_to_victory, output_file_name_winners)
+    write_to_file(bowls, paths_to_defeat, output_file_name_losers)
