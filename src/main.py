@@ -249,13 +249,11 @@ def validate_path(
     return True
 
 
-def get_winner_and_loser(path: Path, picks: Picks) -> Tuple[Money, Money]:
+def get_winner(path: Path, picks: Picks) -> Money:
 
     results = {}
     max_score = 0
-    min_score = 10000
     winners = []
-    losers = []
 
     for bettor, pick_dict in picks.items():
         if bettor not in results:
@@ -270,24 +268,15 @@ def get_winner_and_loser(path: Path, picks: Picks) -> Tuple[Money, Money]:
         if results[bettor]["score"] >= max_score:
             max_score = results[bettor]["score"]
 
-        if results[bettor]["score"] <= min_score:
-            min_score = results[bettor]["score"]
-
     for bettor, stats in results.items():
 
         if stats["score"] == max_score:
             winners.append(bettor)
 
-        if stats["score"] == min_score:
-            losers.append(bettor)
-
         if len(winners) > 1:
             winners.sort()
 
-        if len(losers) > 1:
-            losers.sort()
-
-    return Money(", ".join(winners), max_score), Money(", ".join(losers), min_score)
+    return Money(", ".join(winners), max_score)
 
 
 def get_bowl_team_list(bowls: Bowls) -> List[List[str]]:
@@ -460,10 +449,9 @@ def get_outcome_dict(path: Path, prob: float, money: Money) -> Dict[str, Any]:
     }
 
 
-def get_outcomes(bowls: Bowls, picks: Picks) -> Tuple[Outcome, Outcome]:
+def get_paths_to_victory(bowls: Bowls, picks: Picks) -> Outcome:
 
     paths_to_victory = {}
-    paths_to_defeat = {}
     bowl_team_list = get_bowl_team_list(bowls)
 
     for path in itertools.product(*bowl_team_list):
@@ -472,7 +460,7 @@ def get_outcomes(bowls: Bowls, picks: Picks) -> Tuple[Outcome, Outcome]:
                 path,
                 bowls,
             )
-            winner, loser = get_winner_and_loser(path, picks)
+            winner = get_winner(path, picks)
 
             if winner.bettor not in paths_to_victory:
                 paths_to_victory[winner.bettor] = []
@@ -480,13 +468,7 @@ def get_outcomes(bowls: Bowls, picks: Picks) -> Tuple[Outcome, Outcome]:
             outcome_dict_winner = get_outcome_dict(path, prob, winner)
             paths_to_victory[winner.bettor].append(outcome_dict_winner)
 
-            if loser.bettor not in paths_to_defeat:
-                paths_to_defeat[loser.bettor] = []
-
-            outcome_dict_loser = get_outcome_dict(path, prob, loser)
-            paths_to_defeat[loser.bettor].append(outcome_dict_loser)
-
-    return paths_to_victory, paths_to_defeat
+    return paths_to_victory
 
 
 def get_output_file_name(epoch_time: int, winners: bool) -> str:
@@ -572,7 +554,7 @@ if __name__ == "__main__":
     multipliers = get_multipliers(args.multipliers_file_name)
     bowls = get_bowls(args.bowls_file_name, multipliers)
     picks = get_picks(args.picks_file_name, bowls)
-    paths_to_victory, paths_to_defeat = get_outcomes(bowls, picks)
+    paths_to_victory = get_paths_to_victory(bowls, picks)
 
     epoch_time = int(time.time())
 
@@ -587,4 +569,3 @@ if __name__ == "__main__":
         output_file_name_losers = get_output_file_name(epoch_time, False)
 
     write_to_file(bowls, paths_to_victory, output_file_name_winners)
-    write_to_file(bowls, paths_to_defeat, output_file_name_losers)
