@@ -212,11 +212,13 @@ def validate_path(
             if team != bowls[bowl]["winner"]:
                 return False
 
+        # play-in games
         if bowls[bowl]["play_in"]:
             for t in bowls[bowl]["teams"]:
                 if t != team:
                     losers.add(t)
 
+    # quarterfinals
     for bowl_team in path:
         bowl, team = bowl_team.split("_")
 
@@ -228,6 +230,7 @@ def validate_path(
                 if t != team:
                     losers.add(t)
 
+    # semis
     for bowl_team in path:
         bowl, team = bowl_team.split("_")
 
@@ -239,6 +242,7 @@ def validate_path(
                 if t != team:
                     losers.add(t)
 
+    # natty
     for bowl_team in path:
         bowl, team = bowl_team.split("_")
 
