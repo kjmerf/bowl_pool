@@ -1,6 +1,7 @@
 import argparse
 import csv
 import itertools
+import os
 import time
 from typing import Any, Dict, List, NamedTuple, Set, Tuple
 
@@ -475,14 +476,11 @@ def get_paths_to_victory(bowls: Bowls, picks: Picks) -> Outcome:
     return paths_to_victory
 
 
-def get_output_file_name(epoch_time: int, winners: bool) -> str:
+def get_output_file_name() -> str:
 
-    if winners:
-        suffix = "winners"
-    else:
-        suffix = "losers"
+    epoch_time = int(time.time())
 
-    return f"/tmp/bowl_pool_{epoch_time}_{suffix}.csv"
+    return f"/tmp/bowl_pool_{epoch_time}.csv"
 
 
 def get_row(**kwargs) -> List[Any]:
@@ -527,7 +525,10 @@ def write_to_file(bowls: Bowls, outcome: Outcome, output_file_name: str) -> None
                 )
                 writer.writerow(row)
 
-    print(output_file_name)
+
+def open_file(output_file_name: str) -> None:
+
+    os.system(f"open {output_file_name}")
 
 
 if __name__ == "__main__":
@@ -545,14 +546,6 @@ if __name__ == "__main__":
         "bowls_file_name",
         help="The name of the CSV file containing information about the bowls",
     )
-    parser.add_argument(
-        "--output_file_name_winners",
-        help="The name of the CSV file that contains the winners",
-    )
-    parser.add_argument(
-        "--output_file_name_losers",
-        help="The name of the CSV file that contains the losers",
-    )
     args = parser.parse_args()
 
     multipliers = get_multipliers(args.multipliers_file_name)
@@ -560,16 +553,7 @@ if __name__ == "__main__":
     picks = get_picks(args.picks_file_name, bowls)
     paths_to_victory = get_paths_to_victory(bowls, picks)
 
-    epoch_time = int(time.time())
+    output_file_name = get_output_file_name()
 
-    if args.output_file_name_winners:
-        output_file_name_winners = args.output_file_name_winners
-    else:
-        output_file_name_winners = get_output_file_name(epoch_time, True)
-
-    if args.output_file_name_losers:
-        output_file_name_losers = args.output_file_name_winners
-    else:
-        output_file_name_losers = get_output_file_name(epoch_time, False)
-
-    write_to_file(bowls, paths_to_victory, output_file_name_winners)
+    write_to_file(bowls, paths_to_victory, output_file_name)
+    open_file(output_file_name)
