@@ -1,53 +1,53 @@
-Bowl,Team,Key,Money Line,Probability,Adjusted Probability,Multiplier,,,Bowl,SUM of Probability
-Alamo,BYU,AlamoBYU,102,0.50,0.47,2.11,,,Alamo,1.04
-Alamo,Colorado,AlamoColorado,-122,0.55,0.53,1.90,,,Austin,1.04
-Austin,Clemson,AustinClemson,300,0.25,0.24,4.18,,,Beaver,1.04
-Austin,Texas,AustinTexas,-385,0.79,0.76,1.31,,,Citrus,1.04
-Beaver,Penn State,BeaverPenn State,-300,0.75,0.72,1.39,,,Cotton,1.09
-Beaver,SMU,BeaverSMU,240,0.29,0.28,3.55,,,Fiesta,1.05
-Citrus,Illinois,CitrusIllinois,310,0.24,0.23,4.28,,,Horseshoe,1.04
-Citrus,South Carolina,CitrusSouth Carolina,-400,0.80,0.77,1.30,,,Natty,1.16
-Cotton,Boise State,CottonBoise State,1800,0.05,0.05,20.66,,,Orange,1.08
-Cotton,Georgia,CottonGeorgia,136,0.42,0.39,2.57,,,Peach,1.05
-Cotton,Indiana,CottonIndiana,1480,0.06,0.06,17.18,,,PopTarts,1.04
-Cotton,Notre Dame,CottonNotre Dame,530,0.16,0.15,6.85,,,ReliaQuest,1.05
-Cotton,Penn State,CottonPenn State,215,0.32,0.29,3.42,,,Rose,1.05
-Cotton,SMU,CottonSMU,1300,0.07,0.07,15.22,,,SouthBend,1.04
-Fiesta,Boise State,FiestaBoise State,320,0.24,0.23,4.41,,,Sugar,1.05
-Fiesta,Penn State,FiestaPenn State,-172,0.63,0.60,1.66,,,Grand Total,15.87
-Fiesta,SMU,FiestaSMU,460,0.18,0.17,5.87,,,,
-Horseshoe,Ohio State,HorseshoeOhio State,-265,0.73,0.70,1.44,,,,
-Horseshoe,Tennessee,HorseshoeTennessee,215,0.32,0.30,3.29,,,,
-Natty,Arizona State,NattyArizona State,6000,0.02,0.01,70.77,,,,
-Natty,Boise State,NattyBoise State,7500,0.01,0.01,88.17,,,,
-Natty,Clemson,NattyClemson,6000,0.02,0.01,70.77,,,,
-Natty,Georgia,NattyGeorgia,360,0.22,0.19,5.34,,,,
-Natty,Indiana,NattyIndiana,4000,0.02,0.02,47.56,,,,
-Natty,Notre Dame,NattyNotre Dame,1200,0.08,0.07,15.08,,,,
-Natty,Ohio State,NattyOhio State,500,0.17,0.14,6.96,,,,
-Natty,Oregon,NattyOregon,380,0.21,0.18,5.57,,,,
-Natty,Penn State,NattyPenn State,600,0.14,0.12,8.12,,,,
-Natty,SMU,NattySMU,4500,0.02,0.02,53.36,,,,
-Natty,Tennessee,NattyTennessee,2500,0.04,0.03,30.16,,,,
-Natty,Texas,NattyTexas,360,0.22,0.19,5.34,,,,
+Bowl,Team,Key,Money Line,Probability,Adjusted Probability,Multiplier,,,,
+Alamo,BYU,AlamoBYU,116,0.46,0.44,2.25,,,Bowl,SUM of Probability
+Alamo,Colorado,AlamoColorado,-138,0.58,0.56,1.8,,,Alamo,1.04
+Austin,Clemson,AustinClemson,330,0.23,0.22,4.49,,,Austin,1.04
+Austin,Texas,AustinTexas,-430,0.81,0.78,1.29,,,Beaver,1.05
+Beaver,Penn State,BeaverPenn State,-330,0.77,0.73,1.36,,,Citrus,1.04
+Beaver,SMU,BeaverSMU,260,0.28,0.27,3.76,,,Cotton,1.08
+Citrus,Illinois,CitrusIllinois,285,0.26,0.25,4.02,,,Fiesta,1.1
+Citrus,South Carolina,CitrusSouth Carolina,-365,0.78,0.75,1.33,,,Horseshoe,1.05
+Cotton,Boise State,CottonBoise State,1440,0.06,0.06,16.62,,,Natty,1.19
+Cotton,Georgia,CottonGeorgia,182,0.35,0.33,3.04,,,Orange,1.08
+Cotton,Indiana,CottonIndiana,1400,0.07,0.06,16.19,,,Peach,1.05
+Cotton,Notre Dame,CottonNotre Dame,390,0.2,0.19,5.29,,,PopTarts,1.04
+Cotton,Penn State,CottonPenn State,215,0.32,0.29,3.4,,,ReliaQuest,1.04
+Cotton,SMU,CottonSMU,1300,0.07,0.07,15.11,,,Rose,1.05
+Fiesta,Boise State,FiestaBoise State,270,0.27,0.25,4.07,,,SouthBend,1.04
+Fiesta,Penn State,FiestaPenn State,-184,0.65,0.59,1.7,,,Sugar,1.09
+Fiesta,SMU,FiestaSMU,450,0.18,0.17,6.05,,,Grand Total,15.98
+Horseshoe,Ohio State,HorseshoeOhio State,-275,0.73,0.7,1.43,,,,
+Horseshoe,Tennessee,HorseshoeTennessee,220,0.31,0.3,3.35,,,,
+Natty,Arizona State,NattyArizona State,6000,0.02,0.01,72.48,,,,
+Natty,Boise State,NattyBoise State,6000,0.02,0.01,72.48,,,,
+Natty,Clemson,NattyClemson,6000,0.02,0.01,72.48,,,,
+Natty,Georgia,NattyGeorgia,500,0.17,0.14,7.13,,,,
+Natty,Indiana,NattyIndiana,4000,0.02,0.02,48.72,,,,
+Natty,Notre Dame,NattyNotre Dame,700,0.13,0.11,9.51,,,,
+Natty,Ohio State,NattyOhio State,500,0.17,0.14,7.13,,,,
+Natty,Oregon,NattyOregon,350,0.22,0.19,5.35,,,,
+Natty,Penn State,NattyPenn State,550,0.15,0.13,7.72,,,,
+Natty,SMU,NattySMU,4000,0.02,0.02,48.72,,,,
+Natty,Tennessee,NattyTennessee,2500,0.04,0.03,30.89,,,,
+Natty,Texas,NattyTexas,360,0.22,0.18,5.47,,,,
 Orange,Arizona State,OrangeArizona State,1800,0.05,0.05,20.45,,,,
 Orange,Clemson,OrangeClemson,2400,0.04,0.04,26.91,,,,
 Orange,Ohio State,OrangeOhio State,310,0.24,0.23,4.41,,,,
 Orange,Oregon,OrangeOregon,186,0.35,0.32,3.08,,,,
 Orange,Tennessee,OrangeTennessee,1500,0.06,0.06,17.22,,,,
-Orange,Texas,OrangeTexas,205,0.33,0.30,3.28,,,,
+Orange,Texas,OrangeTexas,205,0.33,0.3,3.28,,,,
 Peach,Arizona State,PeachArizona State,320,0.24,0.23,4.39,,,,
 Peach,Clemson,PeachClemson,640,0.14,0.13,7.74,,,,
 Peach,Texas,PeachTexas,-205,0.67,0.64,1.56,,,,
-PopTarts,Iowa State,PopTartsIowa State,-113,0.53,0.51,1.97,,,,
-PopTarts,Miami,PopTartsMiami,-105,0.51,0.49,2.04,,,,
-ReliaQuest,Alabama,ReliaQuestAlabama,-250,0.71,0.68,1.47,,,,
-ReliaQuest,Michigan,ReliaQuestMichigan,200,0.33,0.32,3.14,,,,
-Rose,Ohio State,RoseOhio State,186,0.35,0.33,3.00,,,,
-Rose,Oregon,RoseOregon,-144,0.59,0.56,1.78,,,,
-Rose,Tennessee,RoseTennessee,820,0.11,0.10,9.65,,,,
-SouthBend,Indiana,SouthBendIndiana,230,0.30,0.29,3.46,,,,
-SouthBend,Notre Dame,SouthBendNotre Dame,-285,0.74,0.71,1.42,,,,
-Sugar,Georgia,SugarGeorgia,-215,0.68,0.65,1.54,,,,
-Sugar,Indiana,SugarIndiana,1020,0.09,0.09,11.74,,,,
-Sugar,Notre Dame,SugarNotre Dame,260,0.28,0.26,3.77,,,,
+PopTarts,Iowa State,PopTartsIowa State,146,0.41,0.39,2.57,,,,
+PopTarts,Miami,PopTartsMiami,-176,0.64,0.61,1.64,,,,
+ReliaQuest,Alabama,ReliaQuestAlabama,-385,0.79,0.76,1.31,,,,
+ReliaQuest,Michigan,ReliaQuestMichigan,300,0.25,0.24,4.18,,,,
+Rose,Ohio State,RoseOhio State,172,0.37,0.35,2.86,,,,
+Rose,Oregon,RoseOregon,-138,0.58,0.55,1.81,,,,
+Rose,Tennessee,RoseTennessee,860,0.1,0.1,10.1,,,,
+SouthBend,Indiana,SouthBendIndiana,230,0.3,0.29,3.44,,,,
+SouthBend,Notre Dame,SouthBendNotre Dame,-285,0.74,0.71,1.41,,,,
+Sugar,Georgia,SugarGeorgia,-136,0.58,0.53,1.88,,,,
+Sugar,Indiana,SugarIndiana,720,0.12,0.11,8.9,,,,
+Sugar,Notre Dame,SugarNotre Dame,158,0.39,0.36,2.8,,,,
