@@ -1,14 +1,12 @@
 import argparse
 import csv
+import io
 import itertools
 import os
-import platform
-import subprocess
-import tempfile
-import time
 from typing import Any, Dict, List, NamedTuple, Optional, Set, Tuple
 
 import gspread
+import pyperclip
 from google.oauth2.service_account import Credentials
 from google.auth.exceptions import GoogleAuthError
 
@@ -493,15 +491,10 @@ def get_paths_to_victory(bowls: Bowls, picks: Picks) -> Outcome:
     return paths_to_victory
 
 
-def get_output_file_name() -> str:
-    """Get a temporary file path for the output CSV, cross-platform compatible."""
-    epoch_time = int(time.time())
-    temp_dir = tempfile.gettempdir()
-    return os.path.join(temp_dir, f"bowl_pool_{epoch_time}.csv")
 
 
 def get_row(is_first_row: bool, bowl_names: Optional[List[str]] = None, bettor: Optional[str] = None, path_dict: Optional[Dict[str, Any]] = None) -> List[Any]:
-    """Generate a CSV row for the output file.
+    """Generate a row for CSV output.
     
     If is_first_row is True, returns the header row. Otherwise, returns a data row
     with bettor name, winning score, probability, and team selections for each bowl.
@@ -513,33 +506,33 @@ def get_row(is_first_row: bool, bowl_names: Optional[List[str]] = None, bettor: 
     return [bettor, path_dict["winning_score"], path_dict["prob"]] + [path_dict["path"][bowl_name] for bowl_name in bowl_names]
 
 
-def write_to_file(bowls: Bowls, outcome: Outcome, output_file_name: str) -> None:
-    """Write all paths to victory to a CSV file.
+def write_to_clipboard(bowls: Bowls, outcome: Outcome) -> None:
+    """Write all paths to victory to the clipboard as TSV-formatted text (tab-separated).
     
-    Each row represents one possible outcome scenario with the winning bettor(s),
-    their score, probability, and team selections for each bowl.
+    Uses TSV format so the data can be easily pasted into Google Sheets, where tabs
+    automatically separate into columns. Each row represents one possible outcome scenario
+    with the winning bettor(s), their score, probability, and team selections for each bowl.
     """
     bowl_names = sorted(bowls.keys())
-    with open(output_file_name, "w", newline="") as csv_file:
-        writer = csv.writer(csv_file)
-        writer.writerow(get_row(is_first_row=True, bowl_names=bowl_names))
-        for bettor, path_list in outcome.items():
-            for path_dict in path_list:
-                writer.writerow(get_row(is_first_row=False, bettor=bettor, path_dict=path_dict, bowl_names=bowl_names))
+    
+    # Create TSV in memory (tab-separated values)
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter='\t')
+    
+    # Write header row
+    writer.writerow(get_row(is_first_row=True, bowl_names=bowl_names))
+    
+    # Write data rows
+    for bettor, path_list in outcome.items():
+        for path_dict in path_list:
+            writer.writerow(get_row(is_first_row=False, bettor=bettor, path_dict=path_dict, bowl_names=bowl_names))
+    
+    # Copy to clipboard
+    tsv_text = output.getvalue()
+    pyperclip.copy(tsv_text)
+    print(f"Results copied to clipboard as TSV ({len(tsv_text)} characters)")
 
 
-def open_file(output_file_name: str) -> None:
-    """Open a file using the system's default application, cross-platform."""
-    system = platform.system()
-    try:
-        if system == "Darwin":  # macOS
-            subprocess.run(["open", output_file_name], check=True)
-        elif system == "Windows":
-            os.startfile(output_file_name)  # type: ignore
-        else:  # Linux and others
-            subprocess.run(["xdg-open", output_file_name], check=True)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print(f"Output saved to: {output_file_name}")
 
 
 if __name__ == "__main__":
@@ -561,7 +554,4 @@ if __name__ == "__main__":
     picks = get_picks(args.sheet_name, bowls, client)
     paths_to_victory = get_paths_to_victory(bowls, picks)
 
-    output_file_name = get_output_file_name()
-
-    write_to_file(bowls, paths_to_victory, output_file_name)
-    open_file(output_file_name)
+    write_to_clipboard(bowls, paths_to_victory)

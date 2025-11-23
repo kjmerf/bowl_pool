@@ -3,14 +3,16 @@ import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
-# Mock gspread before importing main
+# Mock gspread and pyperclip before importing main
 mock_gspread = MagicMock()
 mock_credentials = MagicMock()
 mock_google_auth = MagicMock()
+mock_pyperclip = MagicMock()
 
 sys.modules['gspread'] = mock_gspread
 sys.modules['google.oauth2.service_account'] = mock_credentials
 sys.modules['google.auth.exceptions'] = mock_google_auth
+sys.modules['pyperclip'] = mock_pyperclip
 
 from src import main
 
