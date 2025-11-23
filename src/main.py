@@ -2,8 +2,15 @@ import argparse
 import csv
 import itertools
 import os
+import platform
+import subprocess
+import tempfile
 import time
-from typing import Any, Dict, List, NamedTuple, Set, Tuple
+from typing import Any, Dict, List, NamedTuple, Optional, Set, Tuple
+
+import gspread
+from google.oauth2.service_account import Credentials
+from google.auth.exceptions import GoogleAuthError
 
 Bowls = Dict[str, Dict[str, Any]]
 Multipliers = Dict[str, Dict[str, float]]
@@ -53,12 +60,12 @@ class Money(NamedTuple):
 
 
 def convert_to_bool(s: str) -> bool:
-
+    """Convert a string to boolean. Returns True if string equals 'TRUE', False otherwise."""
     return s == "TRUE"
 
 
 def convert_to_int(s: str) -> int:
-
+    """Convert a string to integer. Returns 0 if conversion fails."""
     try:
         return int(s)
     except ValueError:
@@ -66,7 +73,7 @@ def convert_to_int(s: str) -> int:
 
 
 def read_picks_row(row: List[Any]) -> PicksFileRow:
-
+    """Parse a row from the picks worksheet into a PicksFileRow named tuple."""
     return PicksFileRow(
         row[0],
         row[2],
@@ -76,7 +83,7 @@ def read_picks_row(row: List[Any]) -> PicksFileRow:
 
 
 def read_bowls_row(row: List[Any]) -> BowlsFileRow:
-
+    """Parse a row from the bowls worksheet into a BowlsFileRow named tuple."""
     return BowlsFileRow(
         row[0],
         row[2],
@@ -89,7 +96,7 @@ def read_bowls_row(row: List[Any]) -> BowlsFileRow:
 
 
 def read_multipliers_row(row: List[Any]) -> MultipliersFileRow:
-
+    """Parse a row from the multipliers worksheet into a MultipliersFileRow named tuple."""
     return MultipliersFileRow(
         row[0],
         row[1],
@@ -98,112 +105,153 @@ def read_multipliers_row(row: List[Any]) -> MultipliersFileRow:
     )
 
 
-def get_multipliers(multipliers_file_name: str) -> Multipliers:
+def get_google_sheets_client() -> Any:
+    """Authenticate and return a Google Sheets client."""
+    credentials_path = os.path.expanduser("~/.config/gspread/service_account.json")
+    
+    if not os.path.exists(credentials_path):
+        raise FileNotFoundError(
+            f"Google Sheets credentials not found at {credentials_path}. "
+            "Please set up service account credentials. See README for instructions."
+        )
+    
+    try:
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets.readonly",
+            "https://www.googleapis.com/auth/drive.readonly",
+        ]
+        creds = Credentials.from_service_account_file(credentials_path, scopes=scopes)
+        return gspread.authorize(creds)
+    except GoogleAuthError as e:
+        raise GoogleAuthError(f"Failed to authenticate with Google Sheets: {e}")
 
+
+def get_sheet_data(sheet_name: str, worksheet_name: str, client: Optional[Any] = None) -> List[List[str]]:
+    """Get data from a specific worksheet in a Google Sheet by name.
+    
+    The sheet name must match exactly as it appears in Google Sheets, and the sheet
+    must be shared with your service account email.
+    """
+    if client is None:
+        client = get_google_sheets_client()
+    
+    try:
+        # gspread searches through all sheets shared with the service account
+        # and finds the one with the matching name
+        sheet = client.open(sheet_name)
+        worksheet = sheet.worksheet(worksheet_name)
+        return worksheet.get_all_values()
+    except gspread.exceptions.SpreadsheetNotFound:
+        raise ValueError(
+            f"Google Sheet '{sheet_name}' not found. "
+            "Make sure:\n"
+            "  1. The sheet name matches exactly (case-sensitive)\n"
+            "  2. The sheet is shared with your service account email"
+        )
+    except gspread.exceptions.WorksheetNotFound:
+        raise ValueError(
+            f"Worksheet '{worksheet_name}' not found in sheet '{sheet_name}'. "
+            f"Make sure you have tabs named 'Picks', 'Multipliers', and 'Bowls'."
+        )
+
+
+def get_multipliers(sheet_name: str, client: Optional[Any] = None) -> Multipliers:
+    """Load multipliers data from the 'Multipliers' worksheet.
+    
+    Returns a dictionary mapping bowl names to teams to their multiplier data.
+    """
     multipliers = {}
-    first_row = True
+    rows = get_sheet_data(sheet_name, "Multipliers", client)
 
-    with open(multipliers_file_name) as csvfile:
-        reader = csv.reader(csvfile)
-        for r in reader:
-            if not first_row:
-                row = read_multipliers_row(r)
-
-                if row.bowl not in multipliers:
-                    multipliers[row.bowl] = {}
-
-                multipliers[row.bowl][row.team] = {}
-                multipliers[row.bowl][row.team]["adjusted_prob"] = row.adjusted_prob
-                multipliers[row.bowl][row.team]["multiplier"] = row.multiplier
-
-            first_row = False
+    for r in rows[1:]:  # Skip header row
+        row = read_multipliers_row(r)
+        if row.bowl not in multipliers:
+            multipliers[row.bowl] = {}
+        multipliers[row.bowl][row.team] = {
+            "adjusted_prob": row.adjusted_prob,
+            "multiplier": row.multiplier,
+        }
 
     return multipliers
 
 
-def get_bowls(bowls_file_name: str, multipliers: Multipliers) -> Bowls:
-
+def get_bowls(sheet_name: str, multipliers: Multipliers, client: Optional[Any] = None) -> Bowls:
+    """Load bowls data from the 'Bowls' worksheet and merge with multipliers.
+    
+    Validates that multiplier counts match expected values for each bowl type.
+    """
     bowls = {}
-    first_row = True
+    rows = get_sheet_data(sheet_name, "Bowls", client)
 
-    with open(bowls_file_name) as csvfile:
-        reader = csv.reader(csvfile)
-        for r in reader:
-            if not first_row:
-                row = read_bowls_row(r)
-                bowls[row.bowl] = {}
+    for r in rows[1:]:  # Skip header row
+        row = read_bowls_row(r)
+        bowls[row.bowl] = {
+            "play_in": row.play_in,
+            "quarter": row.quarter,
+            "semi": row.semi,
+            "natty": row.natty,
+            "played": row.played,
+            "teams": multipliers[row.bowl],
+        }
 
-                if row.played:
-                    assert row.winner
-                    bowls[row.bowl]["winner"] = row.winner
+        if row.played:
+            assert row.winner
+            bowls[row.bowl]["winner"] = row.winner
 
-                if row.play_in:
-                    assert len(multipliers[row.bowl]) == 2
-
-                if row.quarter:
-                    assert len(multipliers[row.bowl]) == 3
-
-                if row.semi:
-                    assert len(multipliers[row.bowl]) == 6
-
-                if row.natty:
-                    assert len(multipliers[row.bowl]) == 12
-
-                bowls[row.bowl]["play_in"] = row.play_in
-                bowls[row.bowl]["quarter"] = row.quarter
-                bowls[row.bowl]["semi"] = row.semi
-                bowls[row.bowl]["natty"] = row.natty
-                bowls[row.bowl]["played"] = row.played
-                bowls[row.bowl]["teams"] = multipliers[row.bowl]
-
-            first_row = False
+        # Validate multiplier counts
+        if row.play_in:
+            assert len(multipliers[row.bowl]) == 2
+        if row.quarter:
+            assert len(multipliers[row.bowl]) == 3
+        if row.semi:
+            assert len(multipliers[row.bowl]) == 6
+        if row.natty:
+            assert len(multipliers[row.bowl]) == 12
 
     return bowls
 
 
-def get_picks(picks_file_name: str, bowls: Bowls) -> Picks:
-
+def get_picks(sheet_name: str, bowls: Bowls, client: Optional[Any] = None) -> Picks:
+    """Load picks data from the 'Picks' worksheet and calculate points for each pick.
+    
+    For played games, only winning picks get points. For unplayed games, all picks
+    get potential points based on their multiplier.
+    """
     picks = {}
-    first_row = True
+    rows = get_sheet_data(sheet_name, "Picks", client)
 
-    with open(picks_file_name) as csvfile:
-        reader = csv.reader(csvfile)
-        for r in reader:
-            if not first_row and r[0] and r[0] not in SPREADSHEET_DIVIDERS:
-                row = read_picks_row(r)
+    for r in rows[1:]:  # Skip header row
+        if not r[0] or r[0] in SPREADSHEET_DIVIDERS:
+            continue
 
-                if row.bettor not in picks:
-                    picks[row.bettor] = {}
+        row = read_picks_row(r)
+        if row.bettor not in picks:
+            picks[row.bettor] = {}
+        if row.bowl not in picks[row.bettor]:
+            picks[row.bettor][row.bowl] = {}
 
-                if row.bowl not in picks[row.bettor]:
-                    picks[row.bettor][row.bowl] = {}
+        bowl_data = bowls[row.bowl]
+        team_data = bowl_data["teams"][row.team]
+        
+        if bowl_data["played"]:
+            points = row.points_wagered * team_data["multiplier"] if row.team == bowl_data["winner"] else 0
+        else:
+            points = row.points_wagered * team_data["multiplier"]
 
-                if bowls[row.bowl]["played"]:
-                    if row.team == bowls[row.bowl]["winner"]:
-                        points = (
-                            row.points_wagered
-                            * bowls[row.bowl]["teams"][row.team]["multiplier"]
-                        )
-                    else:
-                        points = 0
-                else:
-                    points = (
-                        row.points_wagered
-                        * bowls[row.bowl]["teams"][row.team]["multiplier"]
-                    )
-
-                picks[row.bettor][row.bowl][row.team] = points
-
-            first_row = False
+        picks[row.bettor][row.bowl][row.team] = points
 
     return picks
 
 
-def validate_path(
-    path: Path,
-    bowls: Bowls,
-) -> bool:
-
+def validate_path(path: Path, bowls: Bowls) -> bool:
+    """Validate that a path (sequence of bowl_team selections) is logically consistent.
+    
+    Checks that:
+    - Played games match actual winners
+    - Teams eliminated in play-in games don't appear in quarterfinals
+    - Teams eliminated in quarterfinals don't appear in semis
+    - Teams eliminated in semis don't appear in the national championship
+    """
     losers = set()
 
     for bowl_team in path:
@@ -255,100 +303,73 @@ def validate_path(
 
 
 def get_winner(path: Path, picks: Picks) -> Money:
-
-    results = {}
-    max_score = 0
-    winners = []
-
+    """Calculate the winner(s) for a given path by summing scores for all bettors.
+    
+    Returns a Money named tuple with the winner name(s) and their score.
+    If multiple bettors tie, they are sorted alphabetically and joined with commas.
+    """
+    scores = {}
     for bettor, pick_dict in picks.items():
-        if bettor not in results:
-            results[bettor] = {}
-            results[bettor]["score"] = 0
+        score = sum(pick_dict[bowl][team] for bowl, team in (bt.split("_") for bt in path))
+        scores[bettor] = score
 
-        for bowl_team in path:
-            bowl, team = bowl_team.split("_")
-            score = pick_dict[bowl][team]
-            results[bettor]["score"] += score
-
-        if results[bettor]["score"] >= max_score:
-            max_score = results[bettor]["score"]
-
-    for bettor, stats in results.items():
-
-        if stats["score"] == max_score:
-            winners.append(bettor)
-
-        if len(winners) > 1:
-            winners.sort()
-
+    max_score = max(scores.values())
+    winners = sorted([bettor for bettor, score in scores.items() if score == max_score])
     return Money(", ".join(winners), max_score)
 
 
 def get_bowl_team_list(bowls: Bowls) -> List[List[str]]:
-
-    bowl_team_list = []
-
-    for bowl, bowl_dict in bowls.items():
-        btl = []
-        for team in bowl_dict["teams"]:
-            btl.append(f"{bowl}_{team}")
-        bowl_team_list.append(btl)
-
-    return bowl_team_list
+    """Generate a list of all possible bowl_team combinations for each bowl.
+    
+    Returns a list where each element is a list of bowl_team strings for one bowl.
+    Used to generate all possible paths via itertools.product.
+    """
+    return [[f"{bowl}_{team}" for team in bowl_dict["teams"]] for bowl, bowl_dict in bowls.items()]
 
 
 def get_play_in_teams(bowls: Bowls) -> Set[str]:
-
-    play_in_teams = set()
-
-    for bowl in bowls:
-        if bowls[bowl]["play_in"]:
-            for team in bowls[bowl]["teams"]:
-                play_in_teams.add(team)
-
-    return play_in_teams
+    """Get the set of all teams that participate in play-in games."""
+    return {team for bowl in bowls if bowls[bowl]["play_in"] for team in bowls[bowl]["teams"]}
 
 
 # pyright: ignore [reportReturnType]
 def get_team_with_bye(bowl: str, bowls: Bowls) -> str:
-
+    """Find the team in a quarterfinal bowl that has a bye (didn't play in a play-in game).
+    
+    Quarterfinal bowls have 3 teams: one with a bye and two from play-in games.
+    """
     play_in_teams = get_play_in_teams(bowls)
-
     if not bowls[bowl]["quarter"]:
         raise ValueError(f"The {bowl} Bowl is not a quarterfinal")
-
     for team in bowls[bowl]["teams"]:
         if team not in play_in_teams:
             return team
-
     raise ValueError(f"Every team playing in the {bowl} Bowl also has a play-in game")
 
 
 def get_my_qf(team: str, bowls: Bowls) -> str:
-
+    """Find which quarterfinal bowl a given team participates in."""
     for bowl in bowls:
-        if bowls[bowl]["quarter"]:
-            if team in bowls[bowl]["teams"]:
-                return bowl
-
+        if bowls[bowl]["quarter"] and team in bowls[bowl]["teams"]:
+            return bowl
     raise ValueError(f"Could not find quarterfinal for {team}")
 
 
 def get_my_semi(team: str, bowls: Bowls) -> str:
-
+    """Find which semifinal bowl a given team participates in."""
     for bowl in bowls:
-        if bowls[bowl]["semi"]:
-            if team in bowls[bowl]["teams"]:
-                return bowl
-
+        if bowls[bowl]["semi"] and team in bowls[bowl]["teams"]:
+            return bowl
     raise ValueError(f"Could not find semi for {team}")
 
 
-def get_prob(
-    path: Path,
-    bowls: Bowls,
-) -> float:
-
+def get_prob(path: Path, bowls: Bowls) -> float:
+    """Calculate the probability of a given path occurring.
+    
+    Handles conditional probabilities for playoff games where teams must advance
+    through earlier rounds. For quarterfinals, semis, and natty, probabilities are
+    normalized based on which teams actually made it to that round.
+    """
     qf_teams = {}
     semi_teams = {}
     natty_teams = []
@@ -436,17 +457,15 @@ def get_prob(
 
 
 def get_path_as_dict(path: Path) -> Dict[str, str]:
-
-    path_as_dict = {}
-    for bowl_team in path:
-        bowl, team = bowl_team.split("_")
-        path_as_dict[bowl] = team
-
-    return path_as_dict
+    """Convert a path tuple to a dictionary mapping bowl names to team names."""
+    return {bowl_team.split("_")[0]: bowl_team.split("_")[1] for bowl_team in path}
 
 
 def get_outcome_dict(path: Path, prob: float, money: Money) -> Dict[str, Any]:
-
+    """Create a dictionary representing a single outcome scenario.
+    
+    Contains the path (bowl -> team mappings), probability, and winning score.
+    """
     return {
         "path": get_path_as_dict(path),
         "prob": prob,
@@ -455,102 +474,91 @@ def get_outcome_dict(path: Path, prob: float, money: Money) -> Dict[str, Any]:
 
 
 def get_paths_to_victory(bowls: Bowls, picks: Picks) -> Outcome:
-
+    """Generate all valid paths to victory and calculate outcomes for each.
+    
+    Iterates through all possible combinations of bowl outcomes, validates each path,
+    calculates probabilities and winners, and groups outcomes by winning bettor.
+    """
     paths_to_victory = {}
     bowl_team_list = get_bowl_team_list(bowls)
 
     for path in itertools.product(*bowl_team_list):
         if validate_path(path, bowls):
-            prob = get_prob(
-                path,
-                bowls,
-            )
+            prob = get_prob(path, bowls)
             winner = get_winner(path, picks)
-
             if winner.bettor not in paths_to_victory:
                 paths_to_victory[winner.bettor] = []
-
-            outcome_dict_winner = get_outcome_dict(path, prob, winner)
-            paths_to_victory[winner.bettor].append(outcome_dict_winner)
+            paths_to_victory[winner.bettor].append(get_outcome_dict(path, prob, winner))
 
     return paths_to_victory
 
 
 def get_output_file_name() -> str:
-
+    """Get a temporary file path for the output CSV, cross-platform compatible."""
     epoch_time = int(time.time())
+    temp_dir = tempfile.gettempdir()
+    return os.path.join(temp_dir, f"bowl_pool_{epoch_time}.csv")
 
-    return f"/tmp/bowl_pool_{epoch_time}.csv"
 
-
-def get_row(**kwargs) -> List[Any]:
-
-    if kwargs["is_first_row"]:
-        return [
-            "bettor",
-            "winning_score",
-            "prob",
-            *kwargs["bowl_names"],
-        ]
-    else:
-        path_dict = kwargs["path_dict"]
-        row = []
-        row.append(kwargs["bettor"])
-        row.append(path_dict["winning_score"])
-        row.append(path_dict["prob"])
-
-        for bowl_name in kwargs["bowl_names"]:
-            row.append(path_dict["path"][bowl_name])
-
-        return row
+def get_row(is_first_row: bool, bowl_names: Optional[List[str]] = None, bettor: Optional[str] = None, path_dict: Optional[Dict[str, Any]] = None) -> List[Any]:
+    """Generate a CSV row for the output file.
+    
+    If is_first_row is True, returns the header row. Otherwise, returns a data row
+    with bettor name, winning score, probability, and team selections for each bowl.
+    """
+    if is_first_row:
+        return ["bettor", "winning_score", "prob", *(bowl_names or [])]
+    if path_dict is None or bettor is None or bowl_names is None:
+        raise ValueError("bettor, path_dict, and bowl_names are required when is_first_row is False")
+    return [bettor, path_dict["winning_score"], path_dict["prob"]] + [path_dict["path"][bowl_name] for bowl_name in bowl_names]
 
 
 def write_to_file(bowls: Bowls, outcome: Outcome, output_file_name: str) -> None:
-
-    bowl_names = list(bowls.keys())
-    bowl_names.sort()
-
-    with open(output_file_name, "w") as csv_file:
+    """Write all paths to victory to a CSV file.
+    
+    Each row represents one possible outcome scenario with the winning bettor(s),
+    their score, probability, and team selections for each bowl.
+    """
+    bowl_names = sorted(bowls.keys())
+    with open(output_file_name, "w", newline="") as csv_file:
         writer = csv.writer(csv_file)
-        first_row = get_row(is_first_row=True, bowl_names=bowl_names)
-        writer.writerow(first_row)
-
+        writer.writerow(get_row(is_first_row=True, bowl_names=bowl_names))
         for bettor, path_list in outcome.items():
             for path_dict in path_list:
-                row = get_row(
-                    bettor=bettor,
-                    path_dict=path_dict,
-                    bowl_names=bowl_names,
-                    is_first_row=False,
-                )
-                writer.writerow(row)
+                writer.writerow(get_row(is_first_row=False, bettor=bettor, path_dict=path_dict, bowl_names=bowl_names))
 
 
 def open_file(output_file_name: str) -> None:
-
-    os.system(f"open {output_file_name}")
+    """Open a file using the system's default application, cross-platform."""
+    system = platform.system()
+    try:
+        if system == "Darwin":  # macOS
+            subprocess.run(["open", output_file_name], check=True)
+        elif system == "Windows":
+            os.startfile(output_file_name)  # type: ignore
+        else:  # Linux and others
+            subprocess.run(["xdg-open", output_file_name], check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print(f"Output saved to: {output_file_name}")
 
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "picks_file_name",
-        help="The name of the CSV file containing information about the picks",
+    parser = argparse.ArgumentParser(
+        description="Calculate paths to victory for bowl pool bettors using Google Sheets."
     )
     parser.add_argument(
-        "multipliers_file_name",
-        help="The name of the CSV file containing information about the multipliers",
-    )
-    parser.add_argument(
-        "bowls_file_name",
-        help="The name of the CSV file containing information about the bowls",
+        "sheet_name",
+        help="Name of the Google Sheet containing all data (with tabs: Picks, Multipliers, Bowls). "
+             "The name must match exactly as it appears in Google Sheets.",
     )
     args = parser.parse_args()
 
-    multipliers = get_multipliers(args.multipliers_file_name)
-    bowls = get_bowls(args.bowls_file_name, multipliers)
-    picks = get_picks(args.picks_file_name, bowls)
+    # Create Google Sheets client once and reuse it
+    client = get_google_sheets_client()
+
+    multipliers = get_multipliers(args.sheet_name, client)
+    bowls = get_bowls(args.sheet_name, multipliers, client)
+    picks = get_picks(args.sheet_name, bowls, client)
     paths_to_victory = get_paths_to_victory(bowls, picks)
 
     output_file_name = get_output_file_name()
