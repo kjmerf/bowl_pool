@@ -218,7 +218,7 @@ def get_picks(sheet_name: str, bowls: Bowls, client: Optional[Any] = None) -> Pi
     picks = {}
     rows = get_sheet_data(sheet_name, "Picks", client)
 
-    for r in rows[1:]:  # Skip header row
+    for r in rows[6:]:  # Skip header row and instructions
         if not r[0] or r[0] in SPREADSHEET_DIVIDERS:
             continue
 
