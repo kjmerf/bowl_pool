@@ -9,6 +9,7 @@
 
 function showMessage(message) {
   // Calculate height based on message length (roughly 20px per line, min 160, max 600)
+  if (!message) message = '';
   var lines = message.split('\n').length;
   var height = Math.min(Math.max(160, lines * 20 + 80), 600);
   
@@ -27,6 +28,7 @@ function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('Validate')
     .addItem('Validate Picks', 'validateAllPicks')
+    .addItem('Validate Bowls', 'validateBowls')
     .addToUi();
 }
 
@@ -56,8 +58,9 @@ function validateAllPicks() {
   
   // Sort errors by bettor name (extract bettor name from error string)
   picksErrors.sort(function(a, b) {
-    var bettorA = a.split(':')[0];
-    var bettorB = b.split(':')[0];
+    if (!a || !b) return 0; // Handle undefined/null values
+    var bettorA = (a.split(':')[0] || '');
+    var bettorB = (b.split(':')[0] || '');
     return bettorA.localeCompare(bettorB);
   });
   
@@ -102,7 +105,10 @@ function validatePicks(picksData) {
       validBettors.push(bettors[i]);
     } else {
       for (var j = 0; j < bettorErrors.length; j++) {
-        errors.push(bettors[i] + ': ' + bettorErrors[j]);
+        // Only add error if it's a valid string
+        if (bettorErrors[j] && typeof bettorErrors[j] === 'string') {
+          errors.push(bettors[i] + ': ' + bettorErrors[j]);
+        }
       }
     }
   }
@@ -264,4 +270,87 @@ function getUniqueBettors(data) {
   }
   
   return bettors;
+}
+
+function validateBowls() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var bowlsSheet = ss.getSheetByName('Bowls');
+    var multipliersSheet = ss.getSheetByName('Multipliers');
+    
+    if (!bowlsSheet) {
+      showMessage('Validation Failed\n\nMissing required tab: "Bowls"');
+      return;
+    }
+    
+    if (!multipliersSheet) {
+      showMessage('Validation Failed\n\nMissing required tab: "Multipliers"');
+      return;
+    }
+    
+    // Build map of bowl -> teams from Multipliers tab
+    var multipliersData = multipliersSheet.getDataRange().getValues();
+    var bowlTeamsMap = {};
+    
+    // Skip header row (index 0)
+    for (var i = 1; i < multipliersData.length; i++) {
+      var row = multipliersData[i];
+      var bowl = row[0];
+      var team = row[1];
+      
+      if (!bowl || !team) continue;
+      
+      if (!bowlTeamsMap[bowl]) {
+        bowlTeamsMap[bowl] = [];
+      }
+      
+      // Only add unique teams
+      if (bowlTeamsMap[bowl].indexOf(team) === -1) {
+        bowlTeamsMap[bowl].push(team);
+      }
+    }
+    
+    // Validate bowls
+    var bowlsData = bowlsSheet.getDataRange().getValues();
+    var errors = [];
+    
+    // Skip header row (index 0)
+    for (var i = 1; i < bowlsData.length; i++) {
+      var row = bowlsData[i];
+      var bowl = row[0];
+      var winner = row[2];
+      var played = row[3];
+      
+      // Skip empty rows
+      if (!bowl) continue;
+      
+      // Only check bowls that are marked as played and have a winner
+      if (played === true || played === 'TRUE') {
+        if (winner && winner !== '') {
+          // Check if winner is in the teams list for this bowl
+          if (!bowlTeamsMap[bowl]) {
+            errors.push('Row ' + (i + 1) + ': Bowl "' + bowl + '" is not found in the Multipliers tab.');
+          } else if (bowlTeamsMap[bowl].indexOf(winner) === -1) {
+            errors.push('Row ' + (i + 1) + ': The winner "' + winner + '" for bowl "' + bowl + '" is not a valid team for this bowl. Valid teams are: ' + bowlTeamsMap[bowl].join(', '));
+          }
+        }
+      }
+    }
+    
+    // Display results
+    var message = '';
+    if (errors.length === 0) {
+      message = '✓ All bowl winners are valid!';
+    } else {
+      message = 'VALIDATION ERRORS FOUND:\n\n';
+      message += 'Please fix the following issues:\n\n';
+      for (var j = 0; j < errors.length; j++) {
+        message += (j + 1) + '. ' + errors[j] + '\n\n';
+      }
+    }
+    
+    showMessage(message);
+  } catch (error) {
+    showMessage('Validation Error\n\nAn error occurred during validation: ' + error.toString());
+  }
 }
