@@ -7,6 +7,22 @@
  * 3. Uses numbers 1-10, each number exactly once (points wagered values are 1-10 with no duplicates)
  */
 
+function showMessage(message) {
+  // Calculate height based on message length (roughly 20px per line, min 160, max 600)
+  var lines = message.split('\n').length;
+  var height = Math.min(Math.max(160, lines * 20 + 80), 600);
+  
+  var html = HtmlService
+    .createHtmlOutput(
+      '<div style="font-family:Arial; font-size:14px; padding:8px; max-height:500px; overflow-y:auto;">'
+      + message.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') +
+      '</div><div style="text-align:right; padding:8px;"><button onclick="google.script.host.close()">OK</button></div>'
+    )
+    .setWidth(500)
+    .setHeight(height);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Validation Results');
+}
+
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('Validate')
@@ -19,14 +35,14 @@ function validateAllPicks() {
   var picksSheet = ss.getSheetByName('Picks');
   
   if (!picksSheet) {
-    SpreadsheetApp.getUi().alert('Validation Failed', 'Missing required tab: "Picks"', SpreadsheetApp.getUi().ButtonSet.OK);
+    showMessage('Validation Failed\n\nMissing required tab: "Picks"');
     return;
   }
   
   var picksData = picksSheet.getDataRange().getValues();
   
   if (picksData.length < 2) {
-    SpreadsheetApp.getUi().alert('Validation Failed', 'Picks tab: No data found', SpreadsheetApp.getUi().ButtonSet.OK);
+    showMessage('Validation Failed\n\nPicks tab: No data found');
     return;
   }
   
@@ -63,7 +79,7 @@ function validateAllPicks() {
     } else {
       message = '✓ All submissions are valid!';
     }
-    SpreadsheetApp.getUi().alert('Validation Results', message, SpreadsheetApp.getUi().ButtonSet.OK);
+    showMessage(message);
   } else {
     message += 'VALIDATION ERRORS FOUND:\n\n';
     message += 'Please fix the following issues:\n\n';
@@ -71,7 +87,7 @@ function validateAllPicks() {
       message += (j + 1) + '. ' + picksErrors[j] + '\n\n';
     }
     
-    SpreadsheetApp.getUi().alert('Validation Results', message, SpreadsheetApp.getUi().ButtonSet.OK);
+    showMessage(message);
   }
 }
 
