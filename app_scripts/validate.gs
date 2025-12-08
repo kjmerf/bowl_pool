@@ -1,132 +1,127 @@
 /**
- * Bowl Pool Picks Validator
+ * Bowl Pool Picks Validator - Inline Validation
  * 
- * Validates that each bettor:
- * 1. Only picks one winner per game (only one team per bowl has points wagered)
- * 2. Makes exactly 10 picks (exactly 10 rows with points wagered > 0)
- * 3. Uses numbers 1-10, each number exactly once (points wagered values are 1-10 with no duplicates)
+ * This script provides a custom function for inline validation (no authorization required).
+ * Automatically recalculates when any cell in the Picks sheet is edited.
+ * 
+ * SETUP:
+ * 1. In cell Z1, enter any number (e.g., 1). This is the trigger cell that will be
+ *    automatically updated by the onEdit trigger.
+ * 2. Add a new column (e.g., column P) with header "Validation Status"
+ * 3. In row 7 (first data row), enter: =VALIDATE_BETTOR_PICKS($G7, $Z$1)
+ *    (assuming column G contains bettor names)
+ * 4. Copy this formula down for all bettors
+ * 5. Add conditional formatting: if cell contains "ERROR:", make it red
+ * 
+ * NOTE: The onEdit trigger automatically updates Z1 whenever any cell is edited,
+ * which forces all validation functions to recalculate because they reference Z1.
  */
 
-function showMessage(message) {
-  // Calculate height based on message length (roughly 20px per line, min 160, max 600)
-  if (!message) message = '';
-  var lines = message.split('\n').length;
-  var height = Math.min(Math.max(160, lines * 20 + 80), 600);
-  
-  var html = HtmlService
-    .createHtmlOutput(
-      '<div style="font-family:Arial; font-size:14px; padding:8px; max-height:500px; overflow-y:auto;">'
-      + message.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') +
-      '</div><div style="text-align:right; padding:8px;"><button onclick="google.script.host.close()">OK</button></div>'
-    )
-    .setWidth(500)
-    .setHeight(height);
-  SpreadsheetApp.getUi().showModalDialog(html, 'Validation Results');
-}
-
-function onOpen() {
-  var ui = SpreadsheetApp.getUi();
-  ui.createMenu('Validate')
-    .addItem('Validate Picks', 'validateAllPicks')
-    .addItem('Validate Bowls', 'validateBowls')
-    .addToUi();
-}
-
-function validateAllPicks() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var picksSheet = ss.getSheetByName('Picks');
-  
-  if (!picksSheet) {
-    showMessage('Validation Failed\n\nMissing required tab: "Picks"');
-    return;
+/**
+ * Validates a single bettor's picks and returns status.
+ * Returns "✓ Valid" if valid, or "ERROR: [message]" if invalid.
+ * 
+ * @param {string} bettorName - The name of the bettor to validate
+ * @param {number} refreshTrigger - Reference to trigger cell (Z1) to force recalculation
+ * @return {string} Validation status message
+ * @customfunction
+ */
+function VALIDATE_BETTOR_PICKS(bettorName, refreshTrigger) {
+  if (!bettorName || bettorName === '') {
+    return '';
   }
   
-  var picksData = picksSheet.getDataRange().getValues();
-  
-  if (picksData.length < 2) {
-    showMessage('Validation Failed\n\nPicks tab: No data found');
-    return;
-  }
-  
-  // Validate picks (bettor-level)
-  var validationResults = validatePicks(picksData);
-  var picksErrors = validationResults.errors;
-  var validBettors = validationResults.validBettors;
-  
-  // Sort valid bettors alphabetically
-  validBettors.sort();
-  
-  // Sort errors by bettor name (extract bettor name from error string)
-  picksErrors.sort(function(a, b) {
-    if (!a || !b) return 0; // Handle undefined/null values
-    var bettorA = (a.split(':')[0] || '');
-    var bettorB = (b.split(':')[0] || '');
-    return bettorA.localeCompare(bettorB);
-  });
-  
-  var message = '';
-  
-  // Show valid submissions first
-  if (validBettors.length > 0) {
-    message += '✓ Valid submissions:\n';
-    for (var i = 0; i < validBettors.length; i++) {
-      message += '  • ' + validBettors[i] + '\n';
-    }
-    message += '\n';
-  }
-  
-  // Then show errors
-  if (picksErrors.length === 0) {
-    if (validBettors.length > 0) {
-      message += 'All submissions are valid!';
-    } else {
-      message = '✓ All submissions are valid!';
-    }
-    showMessage(message);
-  } else {
-    message += 'VALIDATION ERRORS FOUND:\n\n';
-    message += 'Please fix the following issues:\n\n';
-    for (var j = 0; j < picksErrors.length; j++) {
-      message += (j + 1) + '. ' + picksErrors[j] + '\n\n';
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var picksSheet = ss.getSheetByName('Picks');
+    
+    if (!picksSheet) {
+      return 'ERROR: Picks sheet not found';
     }
     
-    showMessage(message);
-  }
-}
-
-function validatePicks(picksData) {
-  var errors = [];
-  var validBettors = [];
-  var bettors = getUniqueBettors(picksData);
-  
-  for (var i = 0; i < bettors.length; i++) {
-    var bettorErrors = validateBettor(picksData, bettors[i]);
-    if (bettorErrors.length === 0) {
-      validBettors.push(bettors[i]);
-    } else {
-      for (var j = 0; j < bettorErrors.length; j++) {
-        // Only add error if it's a valid string
-        if (bettorErrors[j] && typeof bettorErrors[j] === 'string') {
-          errors.push(bettors[i] + ': ' + bettorErrors[j]);
-        }
-      }
+    // The refreshTrigger parameter creates a dependency on Z1, so when Z1 changes,
+    // this function will automatically recalculate
+    
+    var picksData = picksSheet.getDataRange().getValues();
+    
+    if (picksData.length < 7) {
+      return 'ERROR: No data found';
     }
+    
+    var errors = validateBettor(picksData, bettorName);
+    
+    if (errors.length === 0) {
+      return '✓ Valid';
+    } else {
+      return 'ERROR: ' + errors[0]; // Show first error
+    }
+  } catch (e) {
+    return 'ERROR: ' + e.toString();
   }
-  
-  return {
-    errors: errors,
-    validBettors: validBettors
-  };
 }
 
+/**
+ * Simple onEdit trigger - updates a trigger cell to force recalculation of validation functions.
+ * This runs automatically without requiring authorization.
+ * Triggers on ANY edit to the Picks sheet (after row 7) to ensure validation always updates.
+ */
+function onEdit(e) {
+  try {
+    // Only run on the Picks sheet
+    var sheet = e.source.getActiveSheet();
+    if (sheet.getName() !== 'Picks') {
+      return;
+    }
+    
+    var range = e.range;
+    var row = range.getRow();
+    
+    // Skip instruction rows (rows 1-6) and header row (row 7)
+    // But allow edits to trigger cell (Z1) itself to avoid infinite loop
+    if (row <= 7 && range.getA1Notation() !== 'Z1') {
+      return;
+    }
+    
+    // Skip if we're editing the trigger cell itself to avoid infinite loop
+    if (range.getA1Notation() === 'Z1') {
+      return;
+    }
+    
+    // Update trigger cell (Z1) with current timestamp to force recalculation
+    // This creates a dependency that causes all validation functions to recalculate
+    var triggerCell = sheet.getRange('Z1');
+    var currentValue = triggerCell.getValue();
+    var newValue = new Date().getTime();
+    
+    // Only update if value actually changed (to minimize unnecessary recalculations)
+    if (currentValue !== newValue) {
+      triggerCell.setValue(newValue);
+    }
+  } catch (e) {
+    // Silently fail - don't interrupt user's editing
+    // Simple triggers have limitations and may fail in some edge cases
+  }
+}
+
+/**
+ * Validates a single bettor's picks.
+ * Checks:
+ * - Exactly 10 picks
+ * - Uses numbers 1-10, each exactly once
+ * - Only one winner per bowl
+ * 
+ * @param {Array} data - All picks data from the sheet
+ * @param {string} bettorName - The name of the bettor to validate
+ * @return {Array} Array of error messages (empty if valid)
+ */
 function validateBettor(data, bettorName) {
   var errors = [];
   var picks = [];
   var bowlsWithPicks = {}; // Track which bowls have picks and which teams
   var pointsUsed = {}; // Track which point values are used and on which bowls
   
-  // Skip header row (index 0)
-  for (var i = 1; i < data.length; i++) {
+  // Skip first 5 instruction rows and header row (start at index 6)
+  for (var i = 6; i < data.length; i++) {
     var row = data[i];
     var bowl = row[0];
     var team = row[2];
@@ -223,13 +218,15 @@ function validateBettor(data, bettorName) {
   
   if (numPicks !== 10) {
     if (numPicks < 10) {
-      var message = 'You need to pick exactly 10 games. You currently have ' + numPicks + ' picks. Please add ' + (10 - numPicks) + ' more game(s).';
+      var pickWord = numPicks === 1 ? 'pick' : 'picks';
+      var message = 'You need to pick exactly 10 games. You currently have ' + numPicks + ' ' + pickWord + '. Please add ' + (10 - numPicks) + ' more game(s).';
       if (missingPoints.length > 0) {
         message += ' You have not used these point values yet: ' + missingPoints.join(', ') + '. Please assign these point values to your new picks.';
       }
       errors.push(message);
     } else {
-      errors.push('You need to pick exactly 10 games. You currently have ' + numPicks + ' picks. Please remove ' + (numPicks - 10) + ' pick(s).');
+      var pickWord = numPicks === 1 ? 'pick' : 'picks';
+      errors.push('You need to pick exactly 10 games. You currently have ' + numPicks + ' ' + pickWord + '. Please remove ' + (numPicks - 10) + ' pick(s).');
     }
   }
   
@@ -243,6 +240,12 @@ function validateBettor(data, bettorName) {
   return errors;
 }
 
+/**
+ * Parses a points value from a cell, handling empty/null values.
+ * 
+ * @param {*} value - The cell value to parse
+ * @return {number} The parsed points value (0 if invalid/empty)
+ */
 function parsePoints(value) {
   if (value === '' || value === null || value === undefined) {
     return 0;
@@ -251,106 +254,3 @@ function parsePoints(value) {
   return isNaN(num) ? 0 : num;
 }
 
-function getUniqueBettors(data) {
-  var bettors = [];
-  var seen = {};
-  
-  // Skip header row
-  for (var i = 1; i < data.length; i++) {
-    var bettor = data[i][6];
-    if (bettor && bettor !== 'Bettor' && !seen[bettor]) {
-      // Skip divider rows
-      var bowl = data[i][0];
-      if (bowl && bowl !== 'Non-playoff games' && bowl !== 'Play-in games' && 
-          bowl !== 'Quarterfinals' && bowl !== 'Semis' && bowl !== 'National Championship') {
-        bettors.push(bettor);
-        seen[bettor] = true;
-      }
-    }
-  }
-  
-  return bettors;
-}
-
-function validateBowls() {
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var bowlsSheet = ss.getSheetByName('Bowls');
-    var multipliersSheet = ss.getSheetByName('Multipliers');
-    
-    if (!bowlsSheet) {
-      showMessage('Validation Failed\n\nMissing required tab: "Bowls"');
-      return;
-    }
-    
-    if (!multipliersSheet) {
-      showMessage('Validation Failed\n\nMissing required tab: "Multipliers"');
-      return;
-    }
-    
-    // Build map of bowl -> teams from Multipliers tab
-    var multipliersData = multipliersSheet.getDataRange().getValues();
-    var bowlTeamsMap = {};
-    
-    // Skip header row (index 0)
-    for (var i = 1; i < multipliersData.length; i++) {
-      var row = multipliersData[i];
-      var bowl = row[0];
-      var team = row[1];
-      
-      if (!bowl || !team) continue;
-      
-      if (!bowlTeamsMap[bowl]) {
-        bowlTeamsMap[bowl] = [];
-      }
-      
-      // Only add unique teams
-      if (bowlTeamsMap[bowl].indexOf(team) === -1) {
-        bowlTeamsMap[bowl].push(team);
-      }
-    }
-    
-    // Validate bowls
-    var bowlsData = bowlsSheet.getDataRange().getValues();
-    var errors = [];
-    
-    // Skip header row (index 0)
-    for (var i = 1; i < bowlsData.length; i++) {
-      var row = bowlsData[i];
-      var bowl = row[0];
-      var winner = row[2];
-      var played = row[3];
-      
-      // Skip empty rows
-      if (!bowl) continue;
-      
-      // Only check bowls that are marked as played and have a winner
-      if (played === true || played === 'TRUE') {
-        if (winner && winner !== '') {
-          // Check if winner is in the teams list for this bowl
-          if (!bowlTeamsMap[bowl]) {
-            errors.push('Row ' + (i + 1) + ': Bowl "' + bowl + '" is not found in the Multipliers tab.');
-          } else if (bowlTeamsMap[bowl].indexOf(winner) === -1) {
-            errors.push('Row ' + (i + 1) + ': The winner "' + winner + '" for bowl "' + bowl + '" is not a valid team for this bowl. Valid teams are: ' + bowlTeamsMap[bowl].join(', '));
-          }
-        }
-      }
-    }
-    
-    // Display results
-    var message = '';
-    if (errors.length === 0) {
-      message = '✓ All bowl winners are valid!';
-    } else {
-      message = 'VALIDATION ERRORS FOUND:\n\n';
-      message += 'Please fix the following issues:\n\n';
-      for (var j = 0; j < errors.length; j++) {
-        message += (j + 1) + '. ' + errors[j] + '\n\n';
-      }
-    }
-    
-    showMessage(message);
-  } catch (error) {
-    showMessage('Validation Error\n\nAn error occurred during validation: ' + error.toString());
-  }
-}
