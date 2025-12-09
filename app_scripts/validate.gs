@@ -183,7 +183,12 @@ function validateBettor(data, bettorName) {
       for (var k = 0; k < bowlsWithPicks[bowl].length; k++) {
         teams.push(bowlsWithPicks[bowl][k].team);
       }
-      errors.push('You picked multiple winners for the ' + bowl + ' bowl (' + teams.join(' and ') + '). You can only pick one winner per bowl! Please remove all but one pick for this bowl.');
+      var totalPicks = picks.length;
+      var message = 'You picked multiple winners for the ' + bowl + ' bowl (' + teams.join(' and ') + '). You can only pick one winner per bowl! Please remove all but one pick for this bowl.';
+      if (totalPicks > 10) {
+        message += ' Remember: you can only pick exactly 10 games total, and you currently have ' + totalPicks + ' picks.';
+      }
+      errors.push(message);
     }
   }
   
@@ -219,9 +224,14 @@ function validateBettor(data, bettorName) {
   if (numPicks !== 10) {
     if (numPicks < 10) {
       var pickWord = numPicks === 1 ? 'pick' : 'picks';
-      var message = 'You need to pick exactly 10 games. You currently have ' + numPicks + ' ' + pickWord + '. Please add ' + (10 - numPicks) + ' more game(s).';
+      var gamesNeeded = 10 - numPicks;
+      var gameWord = gamesNeeded === 1 ? 'game' : 'games';
+      var message = 'You need to pick exactly 10 games. You currently have ' + numPicks + ' ' + pickWord + '. Please add ' + gamesNeeded + ' more ' + gameWord + '.';
       if (missingPoints.length > 0) {
-        message += ' You have not used these point values yet: ' + missingPoints.join(', ') + '. Please assign these point values to your new picks.';
+        var pointWord = missingPoints.length === 1 ? 'point value' : 'point values';
+        var assignWord = missingPoints.length === 1 ? 'this' : 'these';
+        var newPickWord = gamesNeeded === 1 ? 'pick' : 'picks';
+        message += ' You have not used ' + assignWord + ' ' + pointWord + ' yet: ' + missingPoints.join(', ') + '. Please assign ' + assignWord + ' ' + pointWord + ' to your new ' + newPickWord + '.';
       }
       errors.push(message);
     } else {
