@@ -512,8 +512,10 @@ def write_to_clipboard(bowls: Bowls, outcome: Outcome) -> None:
     Uses TSV format so the data can be easily pasted into Google Sheets, where tabs
     automatically separate into columns. Each row represents one possible outcome scenario
     with the winning bettor(s), their score, probability, and team selections for each bowl.
+    Only includes bowls that have not been played.
     """
-    bowl_names = sorted(bowls.keys())
+    # Filter to only include bowls that have not been played
+    bowl_names = sorted([bowl for bowl in bowls.keys() if not bowls[bowl]["played"]])
     
     # Create TSV in memory (tab-separated values)
     output = io.StringIO()
